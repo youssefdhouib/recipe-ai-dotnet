@@ -1,0 +1,17 @@
+# Weekly pull requests that keep packages, base images and CI actions up to date.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /api
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: docker
+    directories: [/api/RecipeAi.Api, /web]
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

@@ -1,0 +1,139 @@
+# CI/CD for Recipe AI.
+#   Every push and pull request: build + test the API, check migrations, build the Angular app, build both Docker images.
+#   Push to main only: publish the images to GitHub Container Registry (ghcr.io), then deploy (when Azure is configured).
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push on the same branch cancels the run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API · build, test, migrations
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: true
+      # Placeholders so the app can start for the EF Core design-time check. Not secrets, never used to connect.
+      ConnectionStrings__Default: Server=none;Database=ci;TrustServerCertificate=True
+      Jwt__Key: ci-placeholder-key-only-used-to-build-the-model
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore RecipeAi.sln
+
+      - name: Build
+        run: dotnet build RecipeAi.sln -c Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test api/RecipeAi.Api.Tests -c Release --no-build
+          --logger "trx;LogFileName=results.trx" --collect "XPlat Code Coverage" --results-directory TestResults
+
+      # Fails if someone changed a model class but forgot to add the migration.
+      - name: Check migrations are up to date
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.0.11
+          dotnet ef migrations has-pending-model-changes --project api/RecipeAi.Api --configuration Release --no-build
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: TestResults
+
+  web:
+    name: Web · build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npx ng build --configuration production
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-dist
+          path: web/dist/web/browser
+
+  images:
+    name: Docker · ${{ matrix.image }}
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io with the built-in GITHUB_TOKEN (no extra secret)
+    strategy:
+      matrix:
+        include:
+          - image: recipe-ai-api
+            context: api
+            file: api/RecipeAi.Api/Dockerfile
+          - image: recipe-ai-web
+            context: web
+            file: web/Dockerfile
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Pull requests only build the image (proves the Dockerfile works); main also pushes it.
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Off until the repository variable AZURE_WEBAPP_NAME and the secret AZURE_WEBAPP_PUBLISH_PROFILE are set.
+  deploy:
+    name: Deploy · Azure Web App
+    needs: images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_WEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment: production # can require a manual approval in the repository settings
+    steps:
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ghcr.io/${{ github.repository_owner }}/recipe-ai-api:${{ github.sha }}

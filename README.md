@@ -66,9 +66,9 @@ docs/ARCHITECTURE.md      architecture, stack and AI design
 ```bash
 cp .env.example .env              # fill in the passwords (and optionally GROQ_API_KEY)
 
-# Option A: everything in Docker (SQL Server + API)
+# Option A: everything in Docker (SQL Server + API + web behind nginx)
 docker compose --profile api up -d --build
-# API + Swagger: http://localhost:5295/swagger
+# App: http://localhost:8081   API + Swagger: http://localhost:5295/swagger
 
 # Option B: development (database in Docker, API and web locally)
 docker compose up -d              # SQL Server only
@@ -86,8 +86,24 @@ cd web && npm install && npx ng serve   # http://localhost:4200
 Migrations and seed data (6 categories, 8 recipes, an admin `admin@recipeai.local`) are applied automatically at startup.
 
 ```bash
-dotnet test                       # 33 tests
+dotnet test                       # 39 tests
 ```
+
+## CI/CD
+GitHub Actions ([.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml)) runs on every push and pull request:
+
+```
+push / PR ─► api:    restore → build → 39 tests (+ coverage) → "migrations up to date?" check
+          └► web:    npm ci → ng build (production)
+                 └─► images: build recipe-ai-api + recipe-ai-web Docker images
+main only ─────────► push images to ghcr.io (tags: commit SHA + latest)
+                 └─► deploy: Azure Web App (skipped until configured)
+```
+
+- **CI** fails if a test fails, the Angular build breaks, a Dockerfile breaks, or a model changed without a migration.
+- **CD** publishes versioned images to GitHub Container Registry with the built-in `GITHUB_TOKEN` (no extra secret).
+- **Deploy** turns on when the repository variable `AZURE_WEBAPP_NAME` and the secret `AZURE_WEBAPP_PUBLISH_PROFILE` are set; the `production` environment can require a manual approval.
+- **Dependabot** opens weekly update PRs for NuGet, npm, Docker base images and the actions themselves.
 
 ## Author
 **Youssef Dhouib**, final-year Software Engineering student (AI Engineering), ISIMS Sfax.

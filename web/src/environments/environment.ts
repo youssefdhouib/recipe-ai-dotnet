@@ -1,5 +1,6 @@
+// Production build (Docker): nginx serves the app and forwards /api and /uploads to the API,
+// so relative URLs are enough and the same image works on any domain.
 export const environment = {
-  apiUrl: 'http://localhost:5295/api',
-  // Uploaded images are served by the API (wwwroot/uploads).
-  fileBaseUrl: 'http://localhost:5295',
+  apiUrl: '/api',
+  fileBaseUrl: '',
 };
