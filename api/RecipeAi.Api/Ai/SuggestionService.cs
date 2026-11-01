@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using RecipeAi.Api.Data;
 using RecipeAi.Api.Dtos;
+using RecipeAi.Api.Models;
 
 namespace RecipeAi.Api.Ai;
 
@@ -152,12 +153,28 @@ public class SuggestionService
         {
             var result = await call(cancellationToken);
             _logger.LogInformation("AI {Step} via {Provider} succeeded in {ElapsedMs} ms", step, _ai.Name, watch.ElapsedMilliseconds);
+            await RecordAsync(step, watch.ElapsedMilliseconds, success: true);
             return result;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(ex, "AI {Step} via {Provider} failed after {ElapsedMs} ms", step, _ai.Name, watch.ElapsedMilliseconds);
+            await RecordAsync(step, watch.ElapsedMilliseconds, success: false);
             return null;
+        }
+    }
+
+    // Persists one AiCallLog row for the admin dashboard. Logging must never break a suggestion.
+    private async Task RecordAsync(string step, long elapsedMs, bool success)
+    {
+        try
+        {
+            _db.AiCallLogs.Add(new AiCallLog { Step = step, Provider = _ai.Name, DurationMs = (int)elapsedMs, Success = success });
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not save the AI call log");
         }
     }
 }

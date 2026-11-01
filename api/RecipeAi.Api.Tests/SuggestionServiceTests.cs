@@ -73,6 +73,21 @@ public class SuggestionServiceTests
     }
 
     [Fact]
+    public async Task Every_ai_call_is_logged_with_its_outcome()
+    {
+        await using var okDb = CreateDb(out _, out _);
+        await CreateService(okDb, new OfflineAiProvider()).SuggestAsync(new SuggestionRequestDto(new() { "tomato" }, null, null));
+
+        await using var failDb = CreateDb(out _, out _);
+        await CreateService(failDb, new FailingProvider()).SuggestAsync(new SuggestionRequestDto(new() { "tomato" }, null, null));
+
+        Assert.Contains(okDb.AiCallLogs, l => l.Step == "normalize" && l.Success);
+        Assert.Contains(okDb.AiCallLogs, l => l.Step == "rank" && l.Success);
+        Assert.Single(failDb.AiCallLogs); // normalize failed, so the pipeline stopped calling the AI
+        Assert.False(failDb.AiCallLogs.Single().Success);
+    }
+
+    [Fact]
     public async Task Never_suggests_hidden_recipes()
     {
         await using var db = CreateDb(out _, out var hiddenId);

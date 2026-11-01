@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RecipeAi.Api.Dtos;
 using RecipeAi.Api.Services;
 
 namespace RecipeAi.Api.Controllers;
@@ -12,12 +13,17 @@ public class AdminController : ControllerBase
 {
     private readonly RecipeService _recipes;
     private readonly ReviewService _reviews;
+    private readonly StatsService _stats;
 
-    public AdminController(RecipeService recipes, ReviewService reviews)
+    public AdminController(RecipeService recipes, ReviewService reviews, StatsService stats)
     {
         _recipes = recipes;
         _reviews = reviews;
+        _stats = stats;
     }
+
+    [HttpGet("stats")]
+    public async Task<ActionResult<AdminStatsDto>> Stats() => Ok(await _stats.GetAdminAsync());
 
     [HttpPost("reviews/{id:int}/hide")]
     public async Task<IActionResult> HideReview(int id)

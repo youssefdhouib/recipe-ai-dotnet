@@ -170,3 +170,21 @@ export interface CalorieResult {
   macros: Macro[];
   explanation: string;
 }
+
+export interface CountItem { label: string; count: number; }
+export interface DailyCount { date: string; count: number; }
+export interface TopRecipe { id: number; name: string; averageRating: number; reviewCount: number; }
+export interface AiStepLatency { step: string; averageMs: number; calls: number; }
+export interface AiUsage { calls: number; failed: number; successRate: number; averageMs: number; steps: AiStepLatency[]; }
+
+export interface AdminStats {
+  users: number;
+  recipes: number;
+  hiddenRecipes: number;
+  reviews: number;
+  favorites: number;
+  recipesPerCategory: CountItem[];
+  reviewsPerDay: DailyCount[];
+  topRecipes: TopRecipe[];
+  aiUsage: AiUsage;
+}

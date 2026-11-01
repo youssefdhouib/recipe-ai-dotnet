@@ -23,6 +23,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public DbSet<AiCallLog> AiCallLogs => Set<AiCallLog>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -76,6 +78,13 @@ public class AppDbContext : IdentityDbContext<AppUser>
             e.HasIndex(n => new { n.UserId, n.IsRead });
             e.HasOne(n => n.User).WithMany()
                 .HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AiCallLog>(e =>
+        {
+            e.Property(l => l.Step).HasMaxLength(20);
+            e.Property(l => l.Provider).HasMaxLength(80);
+            e.HasIndex(l => l.CreatedOn); // the dashboard always filters on the last N days
         });
     }
 

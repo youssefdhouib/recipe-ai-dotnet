@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import {
-  ApiProblem, AppNotification, CalorieRequest, CalorieResult, PublicStats, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, Review,
+  ApiProblem, AppNotification, AdminStats, CalorieRequest, CalorieResult, PublicStats, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, Review,
   SaveRecipe, SuggestionRequest, SuggestionResponse,
 } from './models';
 
@@ -119,6 +119,10 @@ export class ApiService {
   }
 
   // ----- Admin -----
+  getAdminStats() {
+    return this.http.get<AdminStats>(`${this.url}/admin/stats`);
+  }
+
   setRecipeHidden(id: number, hidden: boolean) {
     return this.http.post<void>(`${this.url}/admin/recipes/${id}/${hidden ? 'hide' : 'unhide'}`, {});
   }
