@@ -8,7 +8,11 @@ export const authGuard: CanActivateFn = (_route, state) => {
   return auth.isLoggedIn() ? true : inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };
 
-export const adminGuard: CanActivateFn = () => {
+export const adminGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
-  return auth.isAdmin() ? true : inject(Router).createUrlTree(['/']);
+  if (auth.isAdmin()) return true;
+  // Not logged in: log in first, then come back. Logged in but not admin: home page.
+  return auth.isLoggedIn()
+    ? inject(Router).createUrlTree(['/'])
+    : inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };

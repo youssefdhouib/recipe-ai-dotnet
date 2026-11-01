@@ -39,7 +39,8 @@ export class AuthComponent {
   private readonly router = inject(Router);
 
   readonly mode = input<'login' | 'register'>('login');
-  readonly returnUrl = input<string>('/');
+  // Set by the guards when a protected page sent you here (?returnUrl=/favorites).
+  readonly returnUrl = input<string>('');
   readonly error = signal('');
   readonly loading = signal(false);
 
@@ -55,8 +56,13 @@ export class AuthComponent {
       : this.auth.register(this.fullName, this.email, this.password);
 
     call.subscribe({
-      next: () => this.router.navigateByUrl(this.returnUrl() || '/'),
+      next: () => this.router.navigateByUrl(this.landingPage()),
       error: e => { this.error.set(errorMessage(e)); this.loading.set(false); },
     });
+  }
+
+  // Back to the page that asked for login; otherwise admins land in their space, users on the home page.
+  private landingPage(): string {
+    return this.returnUrl() || (this.auth.isAdmin() ? '/admin' : '/');
   }
 }
