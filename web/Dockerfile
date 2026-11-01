@@ -1,5 +1,5 @@
 # Multi-stage build: Node compiles the Angular app, a small unprivileged nginx serves it.
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /src
 
 # Install first (only package files) so Docker caches node_modules between builds.
