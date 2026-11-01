@@ -1,0 +1,4 @@
+**/bin/
+**/obj/
+**/wwwroot/uploads/
+RecipeAi.Api.Tests/

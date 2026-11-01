@@ -422,3 +422,86 @@ A visual identity chosen on purpose, not a template:
 - *Where do you store the JWT and what's the risk?* — In `localStorage`: simple, but readable by JavaScript if there's an XSS vulnerability. Angular escapes templates by default, which limits XSS. The more secure alternative is an **httpOnly cookie** with CSRF protection.
 - *How does the front end know the user is an admin?* — From the roles returned at login (also in the JWT). It's only used to show or hide buttons; the API re-checks on every request.
 - *Why lazy loading?* — A smaller initial bundle means a faster first page. The admin page code is never downloaded by normal users.
+
+## Step 7 — Hardening the AI with the real model, Docker packaging, README
+### 7.1 What real-model testing revealed (a good interview story)
+With the real LLM (`openai/gpt-oss-120b`, a reasoning model), the same request sometimes returned **only some of the recipes**: the best match, Rustic Tomato Pasta (80%), was missing from one UI run. Once, a weaker reasoning setting gave Garlic Butter Chicken **100%** although only garlic matched. Unit tests with fake providers couldn't catch this; only real usage did. Three fixes:
+
+| Problem | Fix | Where |
+|---|---|---|
+| The LLM sometimes **forgets** candidates | **Completeness guarantee:** every candidate missing from the AI answer is scored by keyword matching ("Scored by keyword matching."), so a recipe can never silently disappear | `SuggestionService` + test `Recipes_the_ai_forgot_are_still_scored_by_keywords` |
+| The LLM's **numbers are inconsistent** with its own lists | **"The model classifies, our code calculates":** score = matched ÷ (matched + missing) × 100. The model's own score is used only when it gives no lists | `AiResponseValidator` + test `Ranking_computes_the_score_from_matched_and_missing_lists` |
+| Reasoning tokens could exhaust the output budget | `reasoning_effort` set in **config** (`medium`), `max_tokens` raised to 4096 | `GroqAiProvider`, `AiOptions`, `appsettings.json` |
+
+Result: 3 identical runs gave **identical results** (Pasta 80, Shakshuka 29, Chicken 25, Greek Salad 17), with ranking ≈ 4.8 s. **27/27 tests pass.**
+
+UI detail found while testing: the cards' entrance animation started at opacity 0. In a background tab, where animations are paused, the results were invisible. It now starts at opacity 0.4, so **content never depends on an animation**.
+
+### 7.2 Docker
+- `api/RecipeAi.Api/Dockerfile`:
+  - **Multi-stage**: the SDK image builds, the small `aspnet:8.0` image runs.
+  - `dotnet restore` runs on the `.csproj` alone first, so the NuGet layer is cached.
+  - It runs as the **non-root** `app` user.
+- `docker-compose.yml`:
+  - **SQL Server with a healthcheck** (`sqlcmd SELECT 1`). The API waits for `service_healthy` because it runs migrations at startup.
+  - The API service sits behind a **profile**: `docker compose up` starts only the database (dev mode), `--profile api` starts everything.
+  - Secrets come from `.env` (git-ignored; `.env.example` is committed). Configuration is mapped with `__` (e.g. `Jwt__Key` → `Jwt:Key`).
+  - Uploaded images live in a named volume.
+
+### 7.3 README
+A pitch, screenshots, features, the AI reliability diagram, the architecture, and run instructions (Docker or dev).
+
+**Likely interview questions**
+- *How did you test the AI part?* — Unit tests with fake providers for every failure mode (hallucinated ids, malformed JSON, provider down, weak matches), then manual runs against the real model. Those revealed omissions and inconsistent scores, which I fixed with a completeness guarantee and code-computed scores, each covered by a new test.
+- *Why compute the score yourself?* — LLMs are good at semantic matching ("ail" = garlic, "spaghetti" counts as pasta) and bad at consistent arithmetic. Let the model classify and the code calculate: deterministic, explainable, consistent with the UI.
+- *Why a multi-stage Dockerfile?* — The final image contains only the runtime and the published app: smaller, faster to pull, smaller attack surface, no compiler in production.
+- *How do containers find each other?* — By service name on the compose network: the connection string uses `Server=sqlserver,1433`.
+
+---
+
+# Part 3 — Interview preparation
+
+## 3.1 One-minute pitch (EN)
+"Recipe AI is a full-stack app I built with **ASP.NET Core 8, EF Core, SQL Server and Angular**. You type the ingredients you have, and an LLM ranks our recipes by how much you can cook, showing what you have and what's missing.
+
+The back end is a **layered Web API**: controllers for HTTP, services for business rules, EF Core for data. It has JWT auth with roles, FluentValidation, ProblemDetails errors, and rate limiting.
+
+The interesting part is **how I made the AI reliable**:
+- The provider is behind an interface (Groq today, Azure OpenAI tomorrow).
+- Every model answer is validated: only ids I sent, scores computed by my code from the matched and missing lists, and forgotten recipes still scored.
+- If the AI fails, there's a keyword fallback, so the user never gets an error.
+
+It has **27 unit tests**, runs with **Docker Compose**, and I documented every design decision."
+
+## 3.2 Pitch d'une minute (FR)
+« Recipe AI est une application full-stack que j'ai développée avec **ASP.NET Core 8, EF Core, SQL Server et Angular**. L'utilisateur saisit les ingrédients qu'il a, et un LLM classe nos recettes selon ce qu'il peut cuisiner, en montrant ce qu'il a et ce qui manque.
+
+Le back-end est une **API Web en couches** : les contrôleurs gèrent le HTTP, les services les règles métier, EF Core les données. On y trouve une authentification JWT avec rôles, FluentValidation, des erreurs ProblemDetails et du rate limiting.
+
+Le point fort, c'est **la fiabilité de l'IA** :
+- Le fournisseur est derrière une interface (Groq aujourd'hui, Azure OpenAI demain).
+- Chaque réponse du modèle est validée : uniquement les identifiants envoyés, un score calculé par mon code à partir des ingrédients présents et manquants, et les recettes oubliées sont quand même notées.
+- Si l'IA échoue, un repli par mots-clés prend le relais : l'utilisateur n'a jamais d'erreur.
+
+Le projet a **27 tests unitaires**, tourne avec **Docker Compose**, et chaque choix de conception est documenté. »
+
+## 3.3 Quiz: 10 questions to answer out loud (model answers above, in each step)
+1. Draw the request flow for `POST /api/recipes`, from the HTTP request to SQL Server. Where are validation, authorization and the ownership check? *(steps 2–3)*
+2. Explain DI lifetimes with examples from this project. Why is `AppDbContext` scoped and `LocalFileStorage` a singleton? *(steps 1, 3)*
+3. What happens, step by step, when a JWT arrives? 401 vs 403? *(step 2)*
+4. How do you avoid N+1 queries? `IQueryable` vs `IEnumerable`? *(step 3)*
+5. How do you guarantee one review per user under concurrent requests? *(steps 1, 5)*
+6. Why are the review and its notification saved in one transaction, and how? *(step 5)*
+7. How do you stop the LLM from hallucinating or breaking the app? Name 5 protections. *(steps 4, 7)*
+8. What happens when Groq is down or slow? *(step 4: resilience handler + fallback)*
+9. How would you switch to Azure OpenAI? What changes and what doesn't? *(step 4)*
+10. How do you secure image uploads? *(step 3)*
+
+## 3.4 What I would improve next
+- **Refresh tokens** + httpOnly cookies instead of `localStorage`.
+- **Azure deployment:** App Service + Azure SQL + Blob Storage (`AzureBlobStorage : IFileStorage`) + Key Vault for secrets + Azure OpenAI (`AzureOpenAiProvider : IAiProvider`).
+- **Integration tests** with `WebApplicationFactory` + Testcontainers (real SQL Server).
+- **Caching** AI results for identical ingredient sets (`IMemoryCache` / Redis) to cut cost and latency.
+- **SignalR** for real-time notifications instead of refreshing the counter.
+- **Human-in-the-loop for AI actions:** e.g. "Engy-style" agents that *propose* a shopping list or a recipe edit, and the user approves before anything is saved.
+- **CI pipeline** (GitHub Actions): build, test, Docker image.

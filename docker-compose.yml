@@ -1,3 +1,5 @@
+# docker compose up -d --build   ->  SQL Server + API on http://localhost:5295 (Swagger: /swagger)
+# Secrets come from the local .env file (git-ignored). Copy .env.example to .env first.
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -9,6 +11,33 @@ services:
       - "1433:1433"
     volumes:
       - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ./api
+      dockerfile: RecipeAi.Api/Dockerfile
+    container_name: recipe-ai-api
+    profiles: ["api"] # started only with: docker compose --profile api up -d --build
+    depends_on:
+      sqlserver:
+        condition: service_healthy # the API runs migrations at startup, so wait for the database
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development # enables Swagger for the local demo
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=RecipeAi;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Key: ${JWT_KEY}
+      Seed__AdminPassword: ${ADMIN_PASSWORD}
+      Ai__Groq__ApiKey: ${GROQ_API_KEY:-}
+      Cors__Origins__0: http://localhost:4200
+    ports:
+      - "5295:8080"
+    volumes:
+      - uploads:/app/wwwroot/uploads
 
 volumes:
   sqldata:
+  uploads:
