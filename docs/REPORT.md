@@ -211,3 +211,54 @@ dotnet run
 - *Difference between 401 and 403?* — 401: not authenticated (no valid token). 403: authenticated but not allowed (e.g. not an admin).
 - *Where do you validate input, and why FluentValidation?* — In validators, before the action runs, through a global filter. The rules are readable, testable and kept out of controllers and services.
 - *How would you add refresh tokens?* — Store a random refresh token (hashed) per user with an expiry, add `POST /auth/refresh` that rotates it and issues a new short-lived JWT.
+
+## Step 3 — Recipes, categories, admin moderation and image upload
+**What we built**
+
+| File | Role |
+|---|---|
+| `Controllers/RecipesController.cs` | `GET /api/recipes` (search, filters, paging), `GET /{id}`, `POST`, `PUT`, `DELETE`, `POST /{id}/image` |
+| `Controllers/CategoriesController.cs` | `GET` public; `POST/PUT/DELETE` **admin only** (`[Authorize(Roles = "Admin")]`) |
+| `Controllers/AdminController.cs` | `POST /api/admin/recipes/{id}/hide` and `/unhide` (whole controller is admin-only) |
+| `Services/RecipeService.cs` | Queries with `IQueryable`, owner/admin rules, mapping to DTOs, image validation |
+| `Services/CategoryService.cs` | Unique names (409), refuse deleting a category that still has recipes (409) |
+| `Storage/IFileStorage.cs` + `LocalFileStorage.cs` | Save/delete files under `wwwroot/uploads/` behind an interface |
+| `Dtos/RecipeDtos.cs`, `CategoryDtos.cs` | `RecipeQuery`, `PagedResult<T>`, list/detail DTOs, `SaveRecipeDto` |
+| `Dtos/RecipeValidators.cs` | Rules: name ≤ 120, portions 1–50, minutes 0–1440, valid enum, category id > 0 |
+| `Program.cs` | Registers the services, enums as strings in JSON, `UseStaticFiles` for images, CORS for Angular |
+
+**Key code explained**
+- **Building a query step by step:** `_db.Recipes.AsNoTracking().AsQueryable()`, then `.Where(...)` only for the filters that were sent. Nothing hits SQL Server until `CountAsync()` / `ToListAsync()`. EF Core then builds **one SQL query** with `WHERE`, `ORDER BY`, `OFFSET/FETCH`.
+- **Projection with `.Select(r => new RecipeListItemDto(...))`:** EF translates it to SQL that reads only the needed columns, including `Category.Name`, `Author.FullName` and the **average rating computed in SQL** (`AVG`). No `Include`, no loading of whole entities, no N+1 queries.
+- **`AsNoTracking()`** for reads: EF doesn't keep a copy for change tracking, so it's faster and uses less memory. For updates we load with `FindAsync` (tracked), change properties, and call `SaveChangesAsync`, which writes an `UPDATE` with only the changed columns.
+- **Paging:** `Skip((page - 1) * pageSize).Take(pageSize)`, with `pageSize` clamped to 1–50 so nobody can request 1 million rows.
+- **Authorization at two levels:**
+  1. **Roles in attributes:** `[Authorize(Roles = "Admin")]` for categories and moderation.
+  2. **Ownership in the service:** `GetEditableAsync` lets only the author or an admin edit or delete a recipe (403 otherwise). You can't express ownership with an attribute, because it depends on the data.
+- **Hidden recipes:** excluded from lists for everyone except admins and the author. `GET /{id}` returns **404** (not 403) to others, so we don't even reveal that the recipe exists.
+- **Secure image upload:**
+  1. Size limit (2 MB, plus `[RequestSizeLimit]`).
+  2. Extension whitelist (`.jpg .jpeg .png .webp`).
+  3. **Magic-bytes check:** the first bytes must match the real format, so a PHP script renamed `photo.png` is rejected.
+  4. A **random GUID file name**: never the user's name, so no path traversal or overwrite.
+  5. Delete only paths inside `wwwroot/uploads`.
+  - The old image is deleted when it's replaced, and the image is deleted when its recipe is deleted.
+- **`IFileStorage` interface:** the service doesn't know files go to disk. Moving to Azure Blob Storage means writing `AzureBlobStorage : IFileStorage` and changing one line in `Program.cs`.
+- **DI lifetimes recap:** services are `Scoped` (they use the `DbContext`); `LocalFileStorage` is a `Singleton` (stateless).
+
+**Tested (24 end-to-end checks, all PASS)**
+- Browsing: list, search "chicken", filter by category + difficulty.
+- Create: 401 without login, 201 as a user, 400 for invalid input or an unknown category.
+- Edit: 403 for another user, 200 for the owner.
+- Images: PNG upload 200 and served by `UseStaticFiles`; a fake PNG and a PDF are both rejected with 400.
+- Moderation: user hide → 403; admin hide → 204; hidden recipe is 404 for anonymous users but visible to the owner; unhide works.
+- Categories: create as user 403; as admin 200; duplicate 409; deleting a category that has recipes 409; deleting an empty one 204.
+- Delete: another user 403; owner 204, then 404; the image file is removed from disk.
+
+**Likely interview questions**
+- *How do you avoid the N+1 problem?* — Project to DTOs with `.Select()`, so EF builds one SQL query with joins and aggregates. Without that, looping over recipes and reading `recipe.Category.Name` would trigger one extra query per recipe with lazy loading.
+- *`IQueryable` vs `IEnumerable`?* — `IQueryable` builds an expression that EF translates to SQL (filtering happens in the database). `IEnumerable` filters in memory after loading. Filters must be applied before `ToListAsync()`.
+- *Why 404 instead of 403 for a hidden recipe?* — So we don't reveal that the resource exists (information disclosure).
+- *How do you secure a file upload?* — Size limit, extension whitelist, content check (magic bytes), random server-side file name, store outside code folders, never execute uploads, and in production add a virus scan and storage like Azure Blob with a CDN.
+- *Where do you check permissions?* — Roles with `[Authorize(Roles=...)]` on controllers. Data-dependent rules (ownership) in the service, because only the service knows who owns the recipe.
+- *Why return 201 + `CreatedAtAction` on POST?* — REST convention: 201 Created with a `Location` header pointing to the new resource.

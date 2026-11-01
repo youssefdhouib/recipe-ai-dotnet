@@ -486,5 +486,5 @@ $RECYCLE.BIN/
 # project secrets & runtime files
 .env
 *.local.json
-api/RecipeAi.Api/uploads/
+api/RecipeAi.Api/wwwroot/uploads/
 .tools/

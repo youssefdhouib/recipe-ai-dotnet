@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -9,6 +10,7 @@ using RecipeAi.Api.Data;
 using RecipeAi.Api.Errors;
 using RecipeAi.Api.Models;
 using RecipeAi.Api.Services;
+using RecipeAi.Api.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
@@ -56,13 +58,26 @@ builder.Services.AddAuthorization();
 // ---------- 3. Our services (Scoped = one instance per HTTP request) ----------
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<RecipeService>();
+builder.Services.AddScoped<CategoryService>();
+
+// Singleton: LocalFileStorage has no state, one instance is enough for the whole app.
+builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 // ---------- 4. Validation + error handling ----------
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-builder.Services.AddControllers(options => options.Filters.Add<ValidationFilter>());
+builder.Services
+    .AddControllers(options => options.Filters.Add<ValidationFilter>())
+    // Enums travel as text ("Easy") instead of numbers (0): clearer for the Angular app.
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// The Angular dev server runs on another origin (port 4200), so the browser needs CORS permission.
+var allowedOrigins = config.GetSection("Cors:Origins").Get<string[]>() ?? new[] { "http://localhost:4200" };
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+    policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 
 // ---------- 5. Swagger with a "Authorize" button for the JWT ----------
 builder.Services.AddEndpointsApiExplorer();
@@ -96,6 +111,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseStaticFiles();    // serves wwwroot/uploads (recipe images)
+app.UseCors();
 app.UseAuthentication(); // who are you? (reads the JWT)
 app.UseAuthorization();  // are you allowed? ([Authorize], roles)
 app.MapControllers();
