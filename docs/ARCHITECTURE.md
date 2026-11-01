@@ -88,4 +88,8 @@ dotnet run
 - `IAiProvider` returns the model's raw JSON; `GroqAiProvider` (typed `HttpClient` + standard resilience handler: retries, timeouts, circuit breaker; JSON mode) or `OfflineAiProvider` (no network), chosen by configuration.
 - `AiResponseValidator` treats model output as untrusted input: JSON shape checked, only candidate ids kept, **score computed from matched/missing lists**, lists capped, text truncated.
 - `SuggestionService`: clean input → candidates from SQL Server (max 25) → normalise → rank → validate → recipes the model omitted are keyword-scored → ideas when the best score < 40 → **keyword fallback** on any AI failure (`aiAvailable = false`).
-- `POST /api/suggestions` is rate-limited (10 requests/minute/IP); every AI call is logged with its duration.
+- `POST /api/suggestions` is rate-limited (10 requests/minute/IP); every AI call is stored in `AiCallLogs` (step, provider, duration, success) and summarised on the admin dashboard (`GET /api/admin/stats`).
+
+## Other modules
+- `CalorieService` (pure, Singleton): Mifflin-St Jeor BMR × activity factor, goal adjustment (−20% / +10%, floor 1200 kcal), macro split. `POST /api/calories`.
+- `StatsService`: public stats (`GET /api/stats`) and the admin dashboard; all aggregations (`COUNT`, `AVG`, `GROUP BY` day) run in SQL Server.

@@ -18,7 +18,9 @@ Built as a full-stack .NET project: **ASP.NET Core 8 Web API · Entity Framework
 - **Recipes:** search, category and difficulty filters, paging, create/edit/delete (owner or admin), secure photo upload.
 - **Accounts:** register / login with JWT, roles `User` and `Admin`.
 - **Social:** 1–5 star reviews (one per user), favorites, notifications ("X rated your recipe 5/5").
-- **Admin moderation:** hide/unhide recipes and reviews, manage categories.
+- **Calorie calculator:** daily target (Mifflin-St Jeor BMR × activity, goal-adjusted) with a protein / carbs / fat split.
+- **Homepage:** live stats, top rated, "ready in 20 minutes", category photo tiles.
+- **Admin dashboard:** totals, recipes per category, reviews over 14 days, top recipes, and **AI usage** (calls, success rate, latency per step from the AI call log); moderation and category management.
 
 ## How the AI is made reliable
 The LLM is treated as **untrusted input**:
@@ -53,7 +55,7 @@ api/RecipeAi.Api/
 ├─ Storage/       IFileStorage + LocalFileStorage
 ├─ Errors/        global exception handler (ProblemDetails), validation filter
 └─ Program.cs     dependency injection, auth, CORS, rate limiting, middleware pipeline
-api/RecipeAi.Api.Tests/   27 xUnit tests (AI validator, pipeline with fake providers)
+api/RecipeAi.Api.Tests/   33 xUnit tests (AI validator, pipeline with fake providers)
 web/                      Angular 19 front end (standalone components, signals, lazy routes)
 docs/ARCHITECTURE.md      architecture, stack and AI design
 ```
@@ -84,7 +86,7 @@ cd web && npm install && npx ng serve   # http://localhost:4200
 Migrations and seed data (6 categories, 8 recipes, an admin `admin@recipeai.local`) are applied automatically at startup.
 
 ```bash
-dotnet test                       # 27 tests
+dotnet test                       # 33 tests
 ```
 
 ## Author
