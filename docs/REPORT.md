@@ -262,3 +262,66 @@ dotnet run
 - *How do you secure a file upload?* — Size limit, extension whitelist, content check (magic bytes), random server-side file name, store outside code folders, never execute uploads, and in production add a virus scan and storage like Azure Blob with a CDN.
 - *Where do you check permissions?* — Roles with `[Authorize(Roles=...)]` on controllers. Data-dependent rules (ownership) in the service, because only the service knows who owns the recipe.
 - *Why return 201 + `CreatedAtAction` on POST?* — REST convention: 201 Created with a `Location` header pointing to the new resource.
+
+## Step 4 — The AI module ⭐
+**Goal:** the user sends the ingredients they have. The API ranks **our own recipes** with an LLM, explains each match, and proposes new ideas when nothing fits. It's built the way enterprise AI features should be: the model is **untrusted**, every answer is **validated**, and the feature **degrades gracefully**.
+
+**What we built (all in `Ai/` + one controller)**
+
+| File | Role |
+|---|---|
+| `Ai/IAiProvider.cs` | The contract: `NormalizeIngredientsAsync`, `RankRecipesAsync`, `GenerateIdeasAsync`. Each returns the model's **raw JSON text** |
+| `Ai/GroqAiProvider.cs` | Real LLM (Groq, OpenAI-compatible API, model `llama-3.3-70b-versatile`), **typed HttpClient**, JSON mode, temperature 0.2 |
+| `Ai/OfflineAiProvider.cs` | Deterministic provider with no network (keyword matching), same JSON shapes. Used without an API key, for demos, and in tests |
+| `Ai/AiPrompts.cs` | All prompts in one place (system prompt + 3 task prompts) |
+| `Ai/AiResponseValidator.cs` | **The safety layer**: parses and checks every model answer (pure functions, unit-tested) |
+| `Ai/SuggestionService.cs` | The pipeline (6 steps) + keyword fallback + logging of every AI call |
+| `Ai/IngredientText.cs` | Text helpers: "3 cloves of garlic" → "garlic", "Tomatoes" → "tomato" |
+| `Ai/AiOptions.cs` | Strongly-typed config (`Ai:Provider`, timeout, Groq URL/model, API key from user-secrets) |
+| `Controllers/SuggestionsController.cs` | `POST /api/suggestions`, **rate-limited** (10 requests/minute/IP) |
+| `Dtos/SuggestionDtos.cs` | Request (1–20 ingredients, optional category/difficulty) and response DTOs + validator |
+| `RecipeAi.Api.Tests/*` | **25 xUnit tests**: validator, text helpers, full pipeline with fake providers |
+
+**The pipeline (`SuggestionService.SuggestAsync`)**
+1. **Clean** the input: trim, drop empties and duplicates.
+2. **Candidates from our database**: visible recipes only, with the category/difficulty filters, best-rated first, max 25 (keeps the prompt small and the cost low).
+3. **AI normalises** the user's ingredients ("200g Spaghetti" → "spaghetti"), then the validator checks the answer.
+4. **AI ranks our candidates**: score 0–100 plus matched/missing/extra and a reason, then the validator checks the answer.
+5. **Build the response**: recipe **names, images and categories come from our DB, never from the AI**.
+   - If the best score is below 40, the AI is asked for 3 **new recipe ideas** (also validated).
+6. **Fallback**: if any AI step fails (timeout, HTTP error, invalid JSON), we use **keyword scoring** and return `aiAvailable = false` with a message. The user always gets an answer.
+
+**What the validator protects against (each one has a test)**
+- **Hallucinated ids:** only ids we sent are kept (`HashSet` whitelist). Duplicates are removed.
+- **Absurd scores:** clamped to 0–100. Strings ("85") and decimals (91.6) are accepted.
+- **Malformed answers:** plain text, wrong shape or empty → `null`, which triggers the fallback instead of a crash.
+- **Markdown code fences** around the JSON are stripped.
+- **Overlong content:** lists capped at 20 items, text truncated, at most 3 ideas, nameless ideas dropped.
+
+**Production-grade HTTP for the LLM (`Program.cs`)**
+- `AddHttpClient<GroqAiProvider>()`: **IHttpClientFactory** manages connection pooling. Creating `new HttpClient()` per call can exhaust sockets (a known .NET pitfall; the old project had it).
+- `.AddStandardResilienceHandler(...)` (Microsoft.Extensions.Http.Resilience, built on Polly) adds:
+  - **retries** with exponential backoff (2),
+  - a **per-attempt timeout** (30 s) and a **total timeout**,
+  - a **circuit breaker** (stops hammering a failing API).
+- **Provider choice by configuration:** `Ai:Provider = Groq` + an API key in user-secrets → Groq; otherwise Offline. The pipeline only knows `IAiProvider`.
+  - **Adding Azure OpenAI or Gemini later = one new class**, nothing else changes. This is the main reason the interface exists.
+- **Rate limiting** (built into ASP.NET Core 7+): `AddRateLimiter` with a fixed-window policy "ai" (10 req/min per IP) → **429 Too Many Requests**. Every LLM call costs money, so a single client can't run up the bill.
+- **Observability:** each AI call logs step, provider, duration and success/failure. It's the start of an audit trail for AI actions.
+
+**Tested**
+- `dotnet test`: **25/25 pass**. The validator (hallucinated ids, clamping, fences, malformed answers), the text normalisation, and the pipeline with a scripted AI, a failing AI (→ keyword fallback), weak matches (→ ideas), hidden recipes never suggested, and the offline provider.
+- Live API (Offline provider):
+  - "200g spaghetti, 3 Tomatoes, garlic, basil" → Rustic Tomato Pasta **80%** (missing: onion), then Shakshuka 29%.
+  - "banana, honey" → no good match → 3 ideas.
+  - Empty list → 400.
+  - The 11th call within a minute → **429**.
+- Live Groq test: run once with a real key (`dotnet user-secrets set "Ai:Groq:ApiKey" "<key>"`). The startup log then shows `AI provider: Groq`.
+
+**Likely interview questions**
+- *How do you deal with LLM hallucinations?* — I never trust the output. I ask for JSON (JSON mode + low temperature), then validate: ids must be in the set I sent, scores are clamped, lists are capped, and names and images come from my database. Invalid output means fallback, not a crash.
+- *What happens if the AI provider is down?* — The resilience handler retries twice with backoff and enforces timeouts. If it still fails, the service catches it, logs it, and falls back to keyword matching, telling the UI with `aiAvailable = false`.
+- *Why an interface for the AI?* — To swap providers by configuration (Groq, Azure OpenAI, Gemini, offline), and to test the pipeline with fake providers without network or cost.
+- *Why send only 25 candidates?* — Prompt size drives cost and latency, and long contexts reduce answer quality. Pre-filtering in SQL first (category, difficulty, rating) is cheap.
+- *How do you protect your API key and your bill?* — The key lives in user-secrets locally and in Key Vault or environment variables in production; it's never committed. The endpoint is rate-limited per IP, and every call is logged with its duration.
+- *How is this related to agents like Engy?* — Same principles: the LLM proposes, deterministic code validates against real business data, the system logs every AI action, and it degrades safely. The next step would be **human approval** before any write action.

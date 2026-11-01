@@ -1,11 +1,13 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RecipeAi.Api.Ai;
 using RecipeAi.Api.Data;
 using RecipeAi.Api.Errors;
 using RecipeAi.Api.Models;
@@ -64,6 +66,49 @@ builder.Services.AddScoped<CategoryService>();
 // Singleton: LocalFileStorage has no state, one instance is enough for the whole app.
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
+// ---------- 3b. AI module ----------
+builder.Services.Configure<AiOptions>(config.GetSection(AiOptions.SectionName));
+var aiOptions = config.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+
+// Typed HttpClient from IHttpClientFactory + standard resilience pipeline (retries with backoff,
+// per-attempt timeout, total timeout, circuit breaker). LLM calls are slow, so timeouts are generous.
+builder.Services.AddHttpClient<GroqAiProvider>()
+    .AddStandardResilienceHandler(options =>
+    {
+        options.Retry.MaxRetryAttempts = 2;
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(aiOptions.TimeoutSeconds);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(aiOptions.TimeoutSeconds * 2 + 5);
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(aiOptions.TimeoutSeconds * 3);
+    });
+builder.Services.AddSingleton<OfflineAiProvider>();
+
+// Choose the provider from configuration. The rest of the app only knows IAiProvider.
+var useGroq = aiOptions.Provider.Equals("Groq", StringComparison.OrdinalIgnoreCase)
+    && !string.IsNullOrWhiteSpace(aiOptions.Groq.ApiKey);
+if (useGroq)
+{
+    builder.Services.AddScoped<IAiProvider>(sp => sp.GetRequiredService<GroqAiProvider>());
+}
+else
+{
+    builder.Services.AddSingleton<IAiProvider>(sp => sp.GetRequiredService<OfflineAiProvider>());
+}
+
+builder.Services.AddScoped<SuggestionService>();
+
+// Each AI request costs tokens: max N requests per minute per IP address on the "ai" policy.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("ai", http => RateLimitPartition.GetFixedWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = config.GetValue("Ai:RequestsPerMinute", 10),
+            Window = TimeSpan.FromMinutes(1),
+        }));
+});
+
 // ---------- 4. Validation + error handling ----------
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -101,6 +146,7 @@ var app = builder.Build();
 
 // ---------- 6. Prepare the database (migrations + starter data) ----------
 await SeedData.InitializeAsync(app.Services);
+app.Logger.LogInformation("AI provider: {Provider}", useGroq ? "Groq" : "Offline (no Ai:Groq:ApiKey configured)");
 
 // ---------- 7. HTTP pipeline: the order matters ----------
 app.UseExceptionHandler();
@@ -115,6 +161,7 @@ app.UseStaticFiles();    // serves wwwroot/uploads (recipe images)
 app.UseCors();
 app.UseAuthentication(); // who are you? (reads the JWT)
 app.UseAuthorization();  // are you allowed? ([Authorize], roles)
+app.UseRateLimiter();
 app.MapControllers();
 
 app.Run();
