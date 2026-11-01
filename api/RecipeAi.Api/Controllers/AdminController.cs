@@ -39,6 +39,20 @@ public class AdminController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("replies/{id:int}/hide")]
+    public async Task<IActionResult> HideReply(int id)
+    {
+        await _reviews.SetReplyHiddenAsync(id, true);
+        return NoContent();
+    }
+
+    [HttpPost("replies/{id:int}/unhide")]
+    public async Task<IActionResult> UnhideReply(int id)
+    {
+        await _reviews.SetReplyHiddenAsync(id, false);
+        return NoContent();
+    }
+
     [HttpPost("recipes/{id:int}/hide")]
     public async Task<IActionResult> HideRecipe(int id)
     {

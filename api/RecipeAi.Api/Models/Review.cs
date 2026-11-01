@@ -3,6 +3,8 @@ namespace RecipeAi.Api.Models;
 // One review per user per recipe (enforced by a unique index in AppDbContext).
 public class Review : BaseEntity
 {
+    public string Title { get; set; } = string.Empty;
+
     public int Rating { get; set; }
 
     public string Comment { get; set; } = string.Empty;
@@ -16,4 +18,8 @@ public class Review : BaseEntity
     public string UserId { get; set; } = string.Empty;
 
     public AppUser User { get; set; } = null!;
+
+    public ICollection<ReviewReply> Replies { get; set; } = new List<ReviewReply>();
+
+    public ICollection<ReviewVote> Votes { get; set; } = new List<ReviewVote>();
 }

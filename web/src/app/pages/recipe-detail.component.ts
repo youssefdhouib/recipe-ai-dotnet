@@ -1,14 +1,14 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, errorMessage, imageUrl } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
-import { RecipeDetails, Review } from '../core/models';
+import { RecipeDetails } from '../core/models';
+import { ReviewSectionComponent } from '../shared/review-section.component';
 
 @Component({
   selector: 'app-recipe-detail',
-  imports: [FormsModule, RouterLink, DecimalPipe, DatePipe],
+  imports: [RouterLink, DecimalPipe, ReviewSectionComponent],
   template: `
     @if (error()) { <p class="error mb-4">{{ error() }}</p> }
 
@@ -77,43 +77,7 @@ import { RecipeDetails, Review } from '../core/models';
         </section>
 
         <section>
-          <h2 class="mb-4 text-2xl font-bold">Reviews</h2>
-
-          @if (canReview()) {
-            <form class="card mb-5 space-y-3 p-5" (ngSubmit)="addReview()">
-              <div class="flex items-center gap-1 text-2xl text-saffron-400" role="radiogroup" aria-label="Rating">
-                @for (star of [1, 2, 3, 4, 5]; track star) {
-                  <button type="button" role="radio" [attr.aria-checked]="star === rating" (click)="rating = star" [attr.aria-label]="star + ' stars'">{{ star <= rating ? '★' : '☆' }}</button>
-                }
-              </div>
-              <textarea class="input" name="comment" rows="3" placeholder="How did it turn out?" [(ngModel)]="comment" maxlength="1000"></textarea>
-              @if (reviewError()) { <p class="error">{{ reviewError() }}</p> }
-              <button class="btn-primary" type="submit">Post review</button>
-            </form>
-          }
-
-          <div class="space-y-3">
-            @for (rev of reviews(); track rev.id) {
-              <article class="card p-5" [class.opacity-50]="rev.isHidden">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="grid h-8 w-8 place-items-center rounded-full bg-cobalt-50 font-display text-sm font-bold text-cobalt-700">{{ rev.userName.charAt(0) }}</span>
-                    <span class="font-semibold">{{ rev.userName }}</span>
-                    <span class="text-saffron-400">{{ '★'.repeat(rev.rating) }}</span>
-                  </div>
-                  <span class="font-mono text-[11px] text-ink-faint">{{ rev.createdOn | date: 'd MMM y' }}</span>
-                </div>
-                @if (rev.comment) { <p class="mt-3 text-sm text-ink-soft">{{ rev.comment }}</p> }
-                @if (auth.isAdmin()) {
-                  <button class="mt-3 text-xs font-medium text-ink-faint underline hover:text-ink" (click)="toggleReview(rev)">{{ rev.isHidden ? 'Unhide' : 'Hide' }} review</button>
-                }
-              </article>
-            } @empty {
-              <p class="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
-                No reviews yet. {{ canReview() ? 'Cooked it? Be the first to rate it.' : '' }}
-              </p>
-            }
-          </div>
+          <app-review-section [recipeId]="r.id" [recipeAuthorId]="r.authorId" (changed)="reloadRecipe()" />
         </section>
       </div>
     } @else if (!error()) {
@@ -137,29 +101,19 @@ export class RecipeDetailComponent implements OnInit {
   readonly id = input.required({ transform: numberAttribute });
 
   readonly recipe = signal<RecipeDetails | null>(null);
-  readonly reviews = signal<Review[]>([]);
   readonly isFavorite = signal(false);
   readonly error = signal('');
-  readonly reviewError = signal('');
 
   readonly image = computed(() => imageUrl(this.recipe()?.imagePath));
   readonly ingredientList = computed(() => (this.recipe()?.ingredients ?? '').split(',').map(i => i.trim()).filter(Boolean));
   readonly canEdit = computed(() => this.auth.isAdmin() || this.recipe()?.authorId === this.auth.user()?.id);
-  readonly canReview = computed(() => {
-    const user = this.auth.user();
-    return !!user && this.recipe()?.authorId !== user.id && !this.reviews().some(r => r.userId === user.id);
-  });
-
-  rating = 5;
-  comment = '';
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.api.getRecipe(this.id()).subscribe({ next: r => this.recipe.set(r), error: e => this.error.set(errorMessage(e)) });
-    this.api.getReviews(this.id()).subscribe({ next: r => this.reviews.set(r), error: () => this.reviews.set([]) });
+    this.reloadRecipe();
     if (this.auth.isLoggedIn()) {
       this.api.getFavorites().subscribe(f => this.isFavorite.set(f.some(x => x.id === this.id())));
     }
@@ -170,12 +124,9 @@ export class RecipeDetailComponent implements OnInit {
     call.subscribe({ next: () => this.isFavorite.update(v => !v), error: e => this.error.set(errorMessage(e)) });
   }
 
-  addReview(): void {
-    this.reviewError.set('');
-    this.api.addReview(this.id(), { rating: this.rating, comment: this.comment }).subscribe({
-      next: () => { this.comment = ''; this.load(); },
-      error: e => this.reviewError.set(errorMessage(e)),
-    });
+  // Also called by the review section: a new review changes the average rating.
+  reloadRecipe(): void {
+    this.api.getRecipe(this.id()).subscribe({ next: r => this.recipe.set(r), error: e => this.error.set(errorMessage(e)) });
   }
 
   remove(): void {
@@ -187,9 +138,5 @@ export class RecipeDetailComponent implements OnInit {
     const r = this.recipe();
     if (!r) return;
     this.api.setRecipeHidden(r.id, !r.isHidden).subscribe({ next: () => this.load(), error: e => this.error.set(errorMessage(e)) });
-  }
-
-  toggleReview(review: Review): void {
-    this.api.setReviewHidden(review.id, !review.isHidden).subscribe({ next: () => this.load() });
   }
 }

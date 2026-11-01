@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import {
-  ApiProblem, AppNotification, AdminStats, CalorieRequest, CalorieResult, PublicStats, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, Review,
+  ApiProblem, AppNotification, AdminStats, CalorieRequest, CalorieResult, PublicStats, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, RecipeReviews, Reply, ReviewSort, SaveReview,
   SaveRecipe, SuggestionRequest, SuggestionResponse,
 } from './models';
 
@@ -61,12 +61,32 @@ export class ApiService {
   }
 
   // ----- Reviews -----
-  getReviews(recipeId: number) {
-    return this.http.get<Review[]>(`${this.url}/recipes/${recipeId}/reviews`);
+  getReviews(recipeId: number, sort: ReviewSort = 'Newest') {
+    return this.http.get<RecipeReviews>(`${this.url}/recipes/${recipeId}/reviews`, { params: { sort } });
   }
 
-  addReview(recipeId: number, body: { rating: number; comment: string }) {
-    return this.http.post<Review>(`${this.url}/recipes/${recipeId}/reviews`, body);
+  addReview(recipeId: number, body: SaveReview) {
+    return this.http.post<{ id: number }>(`${this.url}/recipes/${recipeId}/reviews`, body);
+  }
+
+  updateReview(id: number, body: SaveReview) {
+    return this.http.put<void>(`${this.url}/reviews/${id}`, body);
+  }
+
+  deleteReview(id: number) {
+    return this.http.delete<void>(`${this.url}/reviews/${id}`);
+  }
+
+  toggleHelpful(id: number) {
+    return this.http.post<{ helpfulCount: number; votedByMe: boolean }>(`${this.url}/reviews/${id}/helpful`, {});
+  }
+
+  addReply(reviewId: number, body: { content: string; parentId: number | null }) {
+    return this.http.post<Reply>(`${this.url}/reviews/${reviewId}/replies`, body);
+  }
+
+  deleteReply(id: number) {
+    return this.http.delete<void>(`${this.url}/replies/${id}`);
   }
 
   // ----- Favorites -----
@@ -129,6 +149,10 @@ export class ApiService {
 
   setReviewHidden(id: number, hidden: boolean) {
     return this.http.post<void>(`${this.url}/admin/reviews/${id}/${hidden ? 'hide' : 'unhide'}`, {});
+  }
+
+  setReplyHidden(id: number, hidden: boolean) {
+    return this.http.post<void>(`${this.url}/admin/replies/${id}/${hidden ? 'hide' : 'unhide'}`, {});
   }
 }
 

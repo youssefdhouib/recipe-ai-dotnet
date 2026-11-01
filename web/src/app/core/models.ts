@@ -82,15 +82,40 @@ export interface PublicStats {
   categories: number;
 }
 
+export type ReviewSort = 'Newest' | 'Helpful' | 'Highest' | 'Lowest';
+
+export interface Reply {
+  id: number;
+  parentId: number | null;
+  content: string;
+  userId: string;
+  userName: string;
+  isRecipeAuthor: boolean;
+  createdOn: string;
+  isHidden: boolean;
+}
+
 export interface Review {
   id: number;
+  title: string;
   rating: number;
   comment: string;
   userId: string;
   userName: string;
   createdOn: string;
+  modifiedOn: string | null;
   isHidden: boolean;
+  helpfulCount: number;
+  votedByMe: boolean;
+  replies: Reply[];
 }
+
+// distribution[0] = number of 5-star reviews ... distribution[4] = 1-star.
+export interface RatingSummary { average: number; count: number; distribution: number[]; }
+
+export interface RecipeReviews { summary: RatingSummary; reviews: Review[]; }
+
+export interface SaveReview { title: string; rating: number; comment: string; }
 
 export interface AppNotification {
   id: number;

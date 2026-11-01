@@ -5,9 +5,9 @@ using RecipeAi.Api.Services;
 
 namespace RecipeAi.Api.Controllers;
 
-// Nested route: reviews always belong to a recipe.
+// Reviews are listed and created under their recipe; once they exist they have their own URL.
 [ApiController]
-[Route("api/recipes/{recipeId:int}/reviews")]
+[Route("api")]
 public class ReviewsController : ControllerBase
 {
     private readonly ReviewService _reviews;
@@ -17,12 +17,49 @@ public class ReviewsController : ControllerBase
         _reviews = reviews;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> GetAll(int recipeId) =>
-        Ok(await _reviews.GetForRecipeAsync(recipeId, User.IsAdmin()));
+    [HttpGet("recipes/{recipeId:int}/reviews")]
+    public async Task<ActionResult<RecipeReviewsDto>> GetForRecipe(int recipeId, [FromQuery] ReviewSort sort = ReviewSort.Newest) =>
+        Ok(await _reviews.GetForRecipeAsync(recipeId, User.TryGetUserId(), User.IsAdmin(), sort));
 
     [Authorize]
-    [HttpPost]
-    public async Task<ActionResult<ReviewDto>> Create(int recipeId, SaveReviewDto dto) =>
-        StatusCode(StatusCodes.Status201Created, await _reviews.CreateAsync(recipeId, dto, User.GetUserId()));
+    [HttpPost("recipes/{recipeId:int}/reviews")]
+    public async Task<IActionResult> Create(int recipeId, SaveReviewDto dto)
+    {
+        var id = await _reviews.CreateAsync(recipeId, dto, User.GetUserId());
+        return StatusCode(StatusCodes.Status201Created, new { id });
+    }
+
+    [Authorize]
+    [HttpPut("reviews/{id:int}")]
+    public async Task<IActionResult> Update(int id, SaveReviewDto dto)
+    {
+        await _reviews.UpdateAsync(id, dto, User.GetUserId());
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpDelete("reviews/{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        await _reviews.DeleteAsync(id, User.GetUserId(), User.IsAdmin());
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("reviews/{id:int}/helpful")]
+    public async Task<ActionResult<HelpfulDto>> ToggleHelpful(int id) =>
+        Ok(await _reviews.ToggleHelpfulAsync(id, User.GetUserId()));
+
+    [Authorize]
+    [HttpPost("reviews/{id:int}/replies")]
+    public async Task<ActionResult<ReplyDto>> Reply(int id, SaveReplyDto dto) =>
+        StatusCode(StatusCodes.Status201Created, await _reviews.AddReplyAsync(id, dto, User.GetUserId()));
+
+    [Authorize]
+    [HttpDelete("replies/{id:int}")]
+    public async Task<IActionResult> DeleteReply(int id)
+    {
+        await _reviews.DeleteReplyAsync(id, User.GetUserId(), User.IsAdmin());
+        return NoContent();
+    }
 }

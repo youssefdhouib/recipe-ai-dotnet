@@ -38,6 +38,7 @@ public static class SeedData
         if (admin is not null)
         {
             await SeedRecipesAsync(db, admin.Id);
+            await SeedDemoReviewsAsync(db, provider.GetRequiredService<UserManager<AppUser>>(), admin.Id);
         }
     }
 
@@ -174,6 +175,60 @@ public static class SeedData
             }
         }
 
+        await db.SaveChangesAsync();
+    }
+
+    // A few reviewers and a short discussion so the review section is not empty in a demo.
+    // The demo users have no password, so nobody can sign in with them.
+    private static async Task SeedDemoReviewsAsync(AppDbContext db, UserManager<AppUser> userManager, string adminId)
+    {
+        if (await userManager.FindByEmailAsync("sami@demo.recipe-ai.local") is not null)
+        {
+            return; // already seeded
+        }
+
+        var names = new[] { "Sami Trabelsi", "Lina Ben Ali", "Karim Haddad" };
+        var users = new List<AppUser>();
+        foreach (var name in names)
+        {
+            var email = $"{name.Split(' ')[0].ToLowerInvariant()}@demo.recipe-ai.local";
+            var user = await userManager.FindByEmailAsync(email);
+            if (user is null)
+            {
+                user = new AppUser { UserName = email, Email = email, FullName = name };
+                await userManager.CreateAsync(user);
+                await userManager.AddToRoleAsync(user, AuthService.UserRole);
+            }
+
+            users.Add(user);
+        }
+
+        var recipes = await db.Recipes.ToDictionaryAsync(r => r.Name, r => r.Id);
+        if (!recipes.TryGetValue("Shakshuka", out var shakshukaId) || !recipes.TryGetValue("Rustic Tomato Pasta", out var pastaId))
+        {
+            return;
+        }
+
+        var best = new Review { RecipeId = shakshukaId, UserId = users[0].Id, Rating = 5, Title = "Tastes like Sunday at home",
+            Comment = "I added a pinch of caraway and a spoon of harissa. The eggs were perfect after 6 minutes with the lid on." };
+        db.Reviews.AddRange(
+            best,
+            new Review { RecipeId = shakshukaId, UserId = users[1].Id, Rating = 4, Title = "Easy and filling",
+                Comment = "Good weeknight dinner. I would use a bit less oil next time." },
+            new Review { RecipeId = shakshukaId, UserId = users[2].Id, Rating = 3, Title = "Needs more spice",
+                Comment = "Nice base, but a little plain for me." },
+            new Review { RecipeId = pastaId, UserId = users[1].Id, Rating = 5, Title = "My kids loved it",
+                Comment = "Fast, cheap and nobody left anything on the plate." });
+        await db.SaveChangesAsync();
+
+        var thanks = new ReviewReply { ReviewId = best.Id, UserId = adminId, Content = "Harissa is a great idea, thanks for sharing!" };
+        db.ReviewReplies.Add(thanks);
+        db.ReviewVotes.AddRange(
+            new ReviewVote { ReviewId = best.Id, UserId = users[1].Id },
+            new ReviewVote { ReviewId = best.Id, UserId = users[2].Id });
+        await db.SaveChangesAsync();
+
+        db.ReviewReplies.Add(new ReviewReply { ReviewId = best.Id, ParentId = thanks.Id, UserId = users[1].Id, Content = "Trying it with caraway this weekend." });
         await db.SaveChangesAsync();
     }
 }

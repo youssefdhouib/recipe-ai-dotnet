@@ -25,6 +25,10 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
     public DbSet<AiCallLog> AiCallLogs => Set<AiCallLog>();
 
+    public DbSet<ReviewReply> ReviewReplies => Set<ReviewReply>();
+
+    public DbSet<ReviewVote> ReviewVotes => Set<ReviewVote>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -52,6 +56,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
 
         builder.Entity<Review>(e =>
         {
+            e.Property(r => r.Title).HasMaxLength(120);
             e.Property(r => r.Comment).HasMaxLength(1000);
             e.HasIndex(r => new { r.UserId, r.RecipeId }).IsUnique();
 
@@ -78,6 +83,28 @@ public class AppDbContext : IdentityDbContext<AppUser>
             e.HasIndex(n => new { n.UserId, n.IsRead });
             e.HasOne(n => n.User).WithMany()
                 .HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Replies and votes cascade from their review. The link to the user is NoAction:
+        // User -> Review -> Reply plus User -> Reply would be two cascade paths, which SQL Server refuses.
+        builder.Entity<ReviewReply>(e =>
+        {
+            e.Property(r => r.Content).HasMaxLength(1000);
+            e.HasOne(r => r.Review).WithMany(v => v.Replies)
+                .HasForeignKey(r => r.ReviewId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(r => r.Parent).WithMany()
+                .HasForeignKey(r => r.ParentId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(r => r.User).WithMany()
+                .HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        builder.Entity<ReviewVote>(e =>
+        {
+            e.HasIndex(v => new { v.UserId, v.ReviewId }).IsUnique();
+            e.HasOne(v => v.Review).WithMany(r => r.Votes)
+                .HasForeignKey(v => v.ReviewId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(v => v.User).WithMany()
+                .HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.NoAction);
         });
 
         builder.Entity<AiCallLog>(e =>
