@@ -5,6 +5,7 @@ import { adminGuard, authGuard } from './core/guards';
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/recipe-list.component').then(m => m.RecipeListComponent), title: 'Recipes' },
   { path: 'suggest', loadComponent: () => import('./pages/suggest.component').then(m => m.SuggestComponent), title: 'AI Suggest' },
+  { path: 'calories', loadComponent: () => import('./pages/calories.component').then(m => m.CaloriesComponent), title: 'Calorie calculator' },
   { path: 'recipes/new', canActivate: [authGuard], loadComponent: () => import('./pages/recipe-form.component').then(m => m.RecipeFormComponent), title: 'New recipe' },
   { path: 'recipes/:id/edit', canActivate: [authGuard], loadComponent: () => import('./pages/recipe-form.component').then(m => m.RecipeFormComponent), title: 'Edit recipe' },
   { path: 'recipes/:id', loadComponent: () => import('./pages/recipe-detail.component').then(m => m.RecipeDetailComponent), title: 'Recipe' },

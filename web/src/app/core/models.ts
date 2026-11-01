@@ -131,3 +131,32 @@ export interface ApiProblem {
   status?: number;
   errors?: Record<string, string[]>;
 }
+
+export type Sex = 'Male' | 'Female';
+export type ActivityLevel = 'Sedentary' | 'Light' | 'Moderate' | 'Active' | 'VeryActive';
+export type Goal = 'Lose' | 'Maintain' | 'Gain';
+
+export interface CalorieRequest {
+  sex: Sex;
+  age: number;
+  weightKg: number;
+  heightCm: number;
+  activity: ActivityLevel;
+  goal: Goal;
+}
+
+export interface Macro {
+  name: string;
+  grams: number;
+  calories: number;
+  percent: number;
+}
+
+export interface CalorieResult {
+  bmr: number;
+  maintenance: number;
+  target: number;
+  perMeal: number;
+  macros: Macro[];
+  explanation: string;
+}
