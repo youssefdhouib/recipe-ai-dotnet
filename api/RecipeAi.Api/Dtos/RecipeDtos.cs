@@ -11,9 +11,21 @@ public class RecipeQuery
 
     public Difficulty? Difficulty { get; set; }
 
+    // Total time limit (prep + cook), e.g. 20 for "ready in 20 minutes".
+    public int? MaxMinutes { get; set; }
+
+    public RecipeSort Sort { get; set; } = RecipeSort.Newest;
+
     public int Page { get; set; } = 1;
 
     public int PageSize { get; set; } = 12;
+}
+
+public enum RecipeSort
+{
+    Newest,
+    TopRated,
+    Quickest,
 }
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);

@@ -66,6 +66,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<FavoriteService>();
 builder.Services.AddSingleton<CalorieService>(); // stateless math: one instance is enough
+builder.Services.AddScoped<StatsService>();
 
 // Singleton: LocalFileStorage has no state, one instance is enough for the whole app.
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();

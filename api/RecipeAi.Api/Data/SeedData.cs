@@ -129,7 +129,7 @@ public static class SeedData
                 Description = "A warming soup filled with seasonal vegetables.",
                 Ingredients = "2 carrots, 1 onion, 2 potatoes, 1 cup green peas, vegetable stock, dried oregano, salt",
                 PrepMinutes = 15, CookMinutes = 30, Portions = 4,
-                ImagePath = "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=800",
+                ImagePath = "https://images.unsplash.com/photo-1588566565463-180a5b2090d2?auto=format&fit=crop&q=80&w=800",
             },
             new Recipe
             {
@@ -145,6 +145,7 @@ public static class SeedData
                 Description = "Smooth, filling lentil soup with cumin and lemon.",
                 Ingredients = "1 cup red lentils, 1 onion, 1 carrot, 2 cloves of garlic, cumin, lemon, vegetable stock, olive oil",
                 PrepMinutes = 10, CookMinutes = 25, Portions = 4,
+                ImagePath = "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=800",
             },
             new Recipe
             {

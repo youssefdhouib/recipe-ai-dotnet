@@ -19,7 +19,15 @@ public class CategoryService
         await _db.Categories
             .AsNoTracking()
             .OrderBy(c => c.Name)
-            .Select(c => new CategoryDto(c.Id, c.Name, c.Description, c.Recipes.Count(r => !r.IsHidden)))
+            .Select(c => new CategoryDto(
+                c.Id,
+                c.Name,
+                c.Description,
+                c.Recipes.Count(r => !r.IsHidden),
+                c.Recipes.Where(r => !r.IsHidden && r.ImagePath != null)
+                    .OrderByDescending(r => r.CreatedOn)
+                    .Select(r => r.ImagePath)
+                    .FirstOrDefault()))
             .ToListAsync();
 
     public async Task<CategoryDto> CreateAsync(SaveCategoryDto dto)

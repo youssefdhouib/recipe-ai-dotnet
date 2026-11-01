@@ -20,7 +20,7 @@ import { RecipeDetails, Review } from '../core/models';
           @if (image(); as src) {
             <img [src]="src" [alt]="r.name" class="h-full w-full object-cover" />
           } @else {
-            <div class="grid h-full place-items-center font-display text-8xl font-extrabold text-cobalt-100">{{ r.name.charAt(0) }}</div>
+            <div class="photo-fallback"><span class="photo-fallback-label !text-2xl">{{ r.name }}</span></div>
           }
           @if (r.isHidden) {
             <span class="absolute left-4 top-4 rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">Hidden by moderation</span>

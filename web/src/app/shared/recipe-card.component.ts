@@ -16,7 +16,7 @@ import { RecipeListItem } from '../core/models';
         @if (image(); as src) {
           <img [src]="src" [alt]="recipe().name" loading="lazy" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         } @else {
-          <div class="grid h-full place-items-center font-display text-6xl font-extrabold text-cobalt-100">{{ recipe().name.charAt(0) }}</div>
+          <div class="photo-fallback"><span class="photo-fallback-label">{{ recipe().name }}</span></div>
         }
         <span class="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-ink">{{ recipe().categoryName }}</span>
         @if (recipe().isHidden) {

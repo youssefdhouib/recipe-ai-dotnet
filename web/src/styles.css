@@ -32,6 +32,17 @@
   .tile-missing { @apply tile border border-dashed border-harissa-600/50 text-harissa-600; }
   .tile-plain { @apply tile bg-cobalt-50 text-cobalt-700; }
 
+  /* Shown when a recipe has no photo: a ceramic-tile surface carrying the recipe name. */
+  .photo-fallback {
+    @apply relative flex h-full w-full items-center justify-center bg-cobalt-600 p-6 text-center;
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(242,179,61,.55) 2px, transparent 2.5px),
+      linear-gradient(45deg, transparent 46%, rgba(255,255,255,.12) 46%, rgba(255,255,255,.12) 54%, transparent 54%),
+      linear-gradient(-45deg, transparent 46%, rgba(255,255,255,.12) 46%, rgba(255,255,255,.12) 54%, transparent 54%);
+    background-size: 22px 22px;
+  }
+  .photo-fallback-label { @apply rounded-xl bg-white px-4 py-2 font-display text-lg font-bold leading-tight text-ink shadow-lift; }
+
   /* The one decorative device: a strip of Nabeul-style ceramic tiles. */
   .ceramic-strip {
     height: 14px;

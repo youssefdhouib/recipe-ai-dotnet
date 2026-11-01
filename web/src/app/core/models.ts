@@ -61,6 +61,8 @@ export interface RecipeQuery {
   search?: string;
   categoryId?: number | null;
   difficulty?: Difficulty | null;
+  maxMinutes?: number | null;
+  sort?: 'Newest' | 'TopRated' | 'Quickest';
   page?: number;
   pageSize?: number;
 }
@@ -70,6 +72,14 @@ export interface Category {
   name: string;
   description: string;
   recipeCount: number;
+  coverImage: string | null;
+}
+
+export interface PublicStats {
+  recipes: number;
+  reviews: number;
+  members: number;
+  categories: number;
 }
 
 export interface Review {

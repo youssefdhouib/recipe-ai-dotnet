@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import {
-  ApiProblem, AppNotification, CalorieRequest, CalorieResult, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, Review,
+  ApiProblem, AppNotification, CalorieRequest, CalorieResult, PublicStats, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, Review,
   SaveRecipe, SuggestionRequest, SuggestionResponse,
 } from './models';
 
@@ -106,6 +106,11 @@ export class ApiService {
   // ----- AI -----
   suggest(body: SuggestionRequest) {
     return this.http.post<SuggestionResponse>(`${this.url}/suggestions`, body);
+  }
+
+  // ----- Stats -----
+  getStats() {
+    return this.http.get<PublicStats>(`${this.url}/stats`);
   }
 
   // ----- Calories -----

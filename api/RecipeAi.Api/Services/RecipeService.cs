@@ -59,9 +59,24 @@ public class RecipeService
             recipes = recipes.Where(r => r.Difficulty == query.Difficulty);
         }
 
+        if (query.MaxMinutes is not null)
+        {
+            recipes = recipes.Where(r => r.PrepMinutes + r.CookMinutes <= query.MaxMinutes);
+        }
+
         var total = await recipes.CountAsync();
-        var items = await recipes
-            .OrderByDescending(r => r.CreatedOn)
+
+        // The sort is translated to SQL ORDER BY (the average rating is computed by SQL Server too).
+        var ordered = query.Sort switch
+        {
+            RecipeSort.TopRated => recipes
+                .OrderByDescending(r => r.Reviews.Where(v => !v.IsHidden).Select(v => (double?)v.Rating).Average() ?? 0)
+                .ThenByDescending(r => r.Reviews.Count(v => !v.IsHidden)),
+            RecipeSort.Quickest => recipes.OrderBy(r => r.PrepMinutes + r.CookMinutes).ThenBy(r => r.Name),
+            _ => recipes.OrderByDescending(r => r.CreatedOn),
+        };
+
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(r => new RecipeListItemDto(
