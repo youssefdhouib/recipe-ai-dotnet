@@ -105,7 +105,7 @@ public static class SeedData
                 Description = "A simple and fresh pasta dish perfect for a quick lunch.",
                 Ingredients = "200g spaghetti, 2 ripe tomatoes, 1 small onion, 3 cloves of garlic, olive oil, fresh basil, salt, black pepper",
                 PrepMinutes = 10, CookMinutes = 15, Portions = 2,
-                ImagePath = "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&q=80&w=800",
+                ImagePath = "https://images.unsplash.com/photo-1598866594230-a7c12756260f?auto=format&fit=crop&q=80&w=800",
             },
             new Recipe
             {
@@ -113,7 +113,7 @@ public static class SeedData
                 Description = "Juicy chicken breasts pan-seared with plenty of garlic and butter.",
                 Ingredients = "2 chicken breasts, 50g butter, 4 cloves of garlic, fresh parsley, 1 tablespoon olive oil, salt",
                 PrepMinutes = 5, CookMinutes = 15, Portions = 2,
-                ImagePath = "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=800",
+                ImagePath = "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&q=80&w=800",
             },
             new Recipe
             {
@@ -137,6 +137,7 @@ public static class SeedData
                 Description = "Eggs poached in a spiced tomato and pepper sauce, a North African classic.",
                 Ingredients = "4 eggs, 4 tomatoes, 1 red pepper, 1 onion, 2 cloves of garlic, harissa, cumin, olive oil, salt",
                 PrepMinutes = 10, CookMinutes = 20, Portions = 2,
+                ImagePath = "https://images.unsplash.com/photo-1590412200988-a436970781fa?auto=format&fit=crop&q=80&w=800",
             },
             new Recipe
             {
@@ -151,6 +152,7 @@ public static class SeedData
                 Description = "Tomatoes, cucumber, olives and feta with oregano.",
                 Ingredients = "3 tomatoes, 1 cucumber, 1 red onion, feta cheese, black olives, olive oil, dried oregano",
                 PrepMinutes = 10, CookMinutes = 0, Portions = 2,
+                ImagePath = "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=800",
             },
             new Recipe
             {
@@ -158,6 +160,7 @@ public static class SeedData
                 Description = "A one-minute microwave chocolate cake.",
                 Ingredients = "4 tablespoons flour, 2 tablespoons cocoa powder, 2 tablespoons sugar, 1 egg, 3 tablespoons milk, 2 tablespoons oil",
                 PrepMinutes = 3, CookMinutes = 2, Portions = 1,
+                ImagePath = "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=800",
             },
         };
 

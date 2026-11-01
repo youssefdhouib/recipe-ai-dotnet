@@ -1,0 +1,49 @@
+<div class="ceramic-strip" aria-hidden="true"></div>
+<header class="sticky top-0 z-20 border-b border-line bg-white/85 backdrop-blur-md">
+  <nav class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-3.5">
+    <a routerLink="/" class="font-display text-xl font-extrabold tracking-tight text-ink">
+      recipe<span class="text-saffron-400">●</span>ai
+    </a>
+
+    <div class="flex flex-1 flex-wrap items-center gap-1 text-sm font-medium">
+      <a routerLink="/" class="nav-link" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: true }">Recipes</a>
+      <a routerLink="/suggest" class="nav-link" routerLinkActive="nav-active">Match my fridge</a>
+      @if (auth.isLoggedIn()) {
+        <a routerLink="/favorites" class="nav-link" routerLinkActive="nav-active">Saved</a>
+        <a routerLink="/recipes/new" class="nav-link" routerLinkActive="nav-active">Add a recipe</a>
+      }
+      @if (auth.isAdmin()) {
+        <a routerLink="/admin" class="nav-link" routerLinkActive="nav-active">Admin</a>
+      }
+    </div>
+
+    <div class="flex items-center gap-3 text-sm">
+      @if (auth.user(); as user) {
+        <a routerLink="/notifications" class="relative grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink-soft hover:text-ink" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+          @if (badge.unread() > 0) {
+            <span class="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-saffron-400 px-1 text-center font-mono text-[10px] font-semibold leading-[18px] text-ink">{{ badge.unread() }}</span>
+          }
+        </a>
+        <span class="hidden items-center gap-2 sm:flex">
+          <span class="grid h-8 w-8 place-items-center rounded-full bg-cobalt-50 font-display text-sm font-bold text-cobalt-700">{{ user.fullName.charAt(0) }}</span>
+          <span class="text-ink-soft">{{ user.fullName }}</span>
+        </span>
+        <button class="btn-ghost !px-4 !py-2" (click)="auth.logout()">Log out</button>
+      } @else {
+        <a routerLink="/login" class="btn-ghost !px-4 !py-2">Log in</a>
+        <a routerLink="/register" class="btn-primary !px-4 !py-2">Create account</a>
+      }
+    </div>
+  </nav>
+</header>
+
+<main class="mx-auto max-w-6xl px-5 py-10">
+  <router-outlet />
+</main>
+
+<footer class="mx-auto max-w-6xl px-5 pb-10 pt-4 text-xs text-ink-faint">
+  Built with ASP.NET Core 8, EF Core, SQL Server and Angular · AI matching validated server-side.
+</footer>

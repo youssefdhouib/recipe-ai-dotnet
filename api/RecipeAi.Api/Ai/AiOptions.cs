@@ -17,7 +17,7 @@ public class GroqOptions
 {
     public string BaseUrl { get; set; } = "https://api.groq.com/openai/v1/";
 
-    public string Model { get; set; } = "llama-3.3-70b-versatile";
+    public string Model { get; set; } = "openai/gpt-oss-120b";
 
     // Never in appsettings.json: set with  dotnet user-secrets set "Ai:Groq:ApiKey" "<key>"
     public string? ApiKey { get; set; }

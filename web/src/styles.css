@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-paper font-sans text-ink antialiased; }
+  h1, h2, h3 { @apply font-display tracking-tight; }
+  :focus-visible { @apply outline-none ring-2 ring-cobalt-500 ring-offset-2 ring-offset-paper; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-cobalt-600 text-white hover:bg-cobalt-700; }
+  .btn-saffron { @apply btn bg-saffron-400 text-ink hover:bg-saffron-600 hover:text-white disabled:bg-white/15 disabled:text-white/60 disabled:opacity-100; }
+  .btn-ghost { @apply btn border border-line bg-white text-ink hover:border-ink-faint; }
+  .btn-danger { @apply btn border border-harissa-100 bg-white text-harissa-600 hover:bg-harissa-100; }
+  .input { @apply w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-cobalt-500 focus:outline-none focus:ring-4 focus:ring-cobalt-100; }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-soft; }
+  .card { @apply rounded-2xl border border-line bg-white; }
+  .eyebrow { @apply font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-faint; }
+  .error { @apply rounded-xl border border-harissa-100 bg-harissa-100/60 px-4 py-2.5 text-sm text-harissa-600; }
+  .nav-link { @apply rounded-full px-3 py-1.5 text-ink-soft transition hover:text-ink; }
+  .nav-active { @apply bg-ink text-white hover:text-white; }
+  .pill { @apply inline-flex items-center rounded-full border border-line bg-white px-3.5 py-1.5 text-sm font-medium text-ink-soft transition hover:border-ink-faint; }
+  .pill-active { @apply border-ink bg-ink text-white hover:border-ink; }
+
+  /* Pantry tiles: an ingredient you have (filled olive) or are missing (dashed harissa). */
+  .tile { @apply inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-mono text-xs; }
+  .tile-have { @apply tile bg-olive-100 text-olive-700; }
+  .tile-missing { @apply tile border border-dashed border-harissa-600/50 text-harissa-600; }
+  .tile-plain { @apply tile bg-cobalt-50 text-cobalt-700; }
+
+  /* The one decorative device: a strip of Nabeul-style ceramic tiles. */
+  .ceramic-strip {
+    height: 14px;
+    background-color: #1F3FA8;
+    background-image:
+      radial-gradient(circle at 50% 50%, #F2B33D 2px, transparent 2.5px),
+      linear-gradient(45deg, transparent 42%, rgba(255,255,255,.9) 42%, rgba(255,255,255,.9) 58%, transparent 58%),
+      linear-gradient(-45deg, transparent 42%, rgba(255,255,255,.9) 42%, rgba(255,255,255,.9) 58%, transparent 58%);
+    background-size: 14px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

@@ -271,7 +271,7 @@ dotnet run
 | File | Role |
 |---|---|
 | `Ai/IAiProvider.cs` | The contract: `NormalizeIngredientsAsync`, `RankRecipesAsync`, `GenerateIdeasAsync`. Each returns the model's **raw JSON text** |
-| `Ai/GroqAiProvider.cs` | Real LLM (Groq, OpenAI-compatible API, model `llama-3.3-70b-versatile`), **typed HttpClient**, JSON mode, temperature 0.2 |
+| `Ai/GroqAiProvider.cs` | Real LLM (Groq, OpenAI-compatible API, model `openai/gpt-oss-120b`, set in config), **typed HttpClient**, JSON mode, temperature 0.2 |
 | `Ai/OfflineAiProvider.cs` | Deterministic provider with no network (keyword matching), same JSON shapes. Used without an API key, for demos, and in tests |
 | `Ai/AiPrompts.cs` | All prompts in one place (system prompt + 3 task prompts) |
 | `Ai/AiResponseValidator.cs` | **The safety layer**: parses and checks every model answer (pure functions, unit-tested) |
@@ -369,3 +369,56 @@ dotnet run
 - *What does idempotent mean and why does it matter for APIs?* — Calling it N times has the same effect as calling it once. It makes retries and double clicks safe. PUT and DELETE should be idempotent; my "add favorite" POST is too, by design.
 - *Why `ExecuteUpdateAsync` instead of loading and saving?* — For bulk updates it's one SQL statement instead of N tracked entities: faster and less memory. Its limit is that it skips change tracking and `SaveChanges` logic.
 - *How would you push notifications in real time?* — SignalR (WebSockets) to push "new notification" events to the Angular app, instead of polling `unread-count`.
+
+## Step 6 — Angular front end (Angular 19 + Tailwind)
+**Design direction: "Sfax kitchen"**
+A visual identity chosen on purpose, not a template:
+- **Colours:** Nabeul-ceramic **cobalt** (`#1F3FA8`) + **saffron** (`#F2B33D`) on cool white. **Olive** means "you have this ingredient", **harissa red** means "you are missing it".
+- **Typography:** **Bricolage Grotesque** for titles, **Figtree** for text, **IBM Plex Mono** for data (scores, minutes, labels).
+- **Signature:**
+  1. The home hero **is** the product's main action: you type your ingredients right there.
+  2. Results show each recipe as a "**pantry shelf**": filled olive tiles for what you have, dashed harissa tiles for what to buy, and a big mono match score.
+  3. A thin ceramic-tile strip is the only decoration.
+- **Quality floor:** responsive down to mobile, visible keyboard focus, `prefers-reduced-motion` respected, loading skeletons, and empty states that tell you what to do.
+
+**Structure (`web/src/app/`)**
+
+| Path | Role |
+|---|---|
+| `core/models.ts` | TypeScript interfaces mirroring the API DTOs |
+| `core/api.service.ts` | One typed method per endpoint + `errorMessage()` (reads ProblemDetails) + `imageUrl()` |
+| `core/auth.service.ts` | Login/register/logout; session kept in **signals** + `localStorage`, expired tokens dropped |
+| `core/auth.interceptor.ts` | Adds `Authorization: Bearer <token>` to API calls; a **401** logs you out |
+| `core/guards.ts` | `authGuard` (redirects to login with `returnUrl`) and `adminGuard` |
+| `core/notification-badge.service.ts` | Unread counter for the bell, refreshed on navigation |
+| `shared/recipe-card.component.ts` | Recipe card (image, category, time, rating) |
+| `shared/ingredient-input.component.ts` | The pantry input: Enter / comma → tile, Backspace removes; two-way binding with `model()` |
+| `pages/recipe-list` | Hero with the pantry input, then browse: search, category pills, difficulty, pagination |
+| `pages/suggest` | **AI page**: pantry + filters → ranked results with tiles and score; AI ideas; "AI unavailable" banner |
+| `pages/recipe-detail` | Photo, prep/cook/serves, ingredient checklist, save, edit/delete (owner/admin), hide (admin), reviews with star rating |
+| `pages/recipe-form` | Create/edit with **reactive forms** (same rules as the API validators) + photo upload |
+| `pages/favorites`, `notifications`, `admin`, `auth` | Saved recipes, notification list, category management + hidden recipes, login/register |
+
+**Angular concepts used (and how to explain them)**
+- **Standalone components** (no NgModules) and the **new control flow** `@if / @for / @empty`.
+- **Signals** (`signal`, `computed`, `effect`, `input`, `model`) for state: simple, synchronous, fine-grained change detection.
+- **Lazy-loaded routes** (`loadComponent`): each page's code is downloaded only when it's opened (see the "Lazy chunk files" in the build output).
+- **`withComponentInputBinding()`:** route params (`:id`) and query params (`?i=tomato,garlic`) arrive as component `input()`s.
+  - The ingredients live in the URL, so a match result can be **bookmarked or shared**.
+- **Functional HTTP interceptor and guards** (the modern style, no classes).
+- **RxJS where it fits:** `switchMap` chains "save recipe" then "upload photo".
+- **Security note:** the guards only improve navigation. The real protection is `[Authorize]` in the API, and the UI never decides permissions on its own.
+
+**API change for this step:** CORS allows `http://localhost:4200`, enums are sent as strings, images are served from `wwwroot/uploads`.
+
+**Real LLM tested.** The Groq model `llama-3.3-70b-versatile` had been retired (Groq returned 404). The fallback kicked in exactly as designed (`aiAvailable: false`, keyword results). Switching to `openai/gpt-oss-120b` was **a one-line config change**, no code. Live results:
+- "200g spaghetti, 3 tomates, ail, basilic frais" (French) → normalised to `spaghetti, tomato, garlic, basil` → Rustic Tomato Pasta **80%**: "All main ingredients are present except onion."
+- "oeufs, tomates, poivron, oignon" → `egg, tomato, bell pepper, onion` → Shakshuka 57%, missing garlic, harissa and cumin.
+- "banana, honey, oats" → no good match → 3 AI ideas (Banana Oat Pancakes...).
+- Latency: normalise ≈ 0.6–0.8 s, rank ≈ 4 s, ideas ≈ 1.1 s.
+
+**Likely interview questions**
+- *Signals vs RxJS?* — Signals for synchronous UI state (the current user, the list shown). RxJS for asynchronous streams (HTTP, chaining calls). Angular's `HttpClient` returns Observables, and I store the results in signals.
+- *Where do you store the JWT and what's the risk?* — In `localStorage`: simple, but readable by JavaScript if there's an XSS vulnerability. Angular escapes templates by default, which limits XSS. The more secure alternative is an **httpOnly cookie** with CSRF protection.
+- *How does the front end know the user is an admin?* — From the roles returned at login (also in the JWT). It's only used to show or hide buttons; the API re-checks on every request.
+- *Why lazy loading?* — A smaller initial bundle means a faster first page. The admin page code is never downloaded by normal users.

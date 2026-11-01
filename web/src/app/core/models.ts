@@ -1,0 +1,133 @@
+// TypeScript mirrors of the API DTOs (api/RecipeAi.Api/Dtos).
+
+export type Difficulty = 'Easy' | 'Medium' | 'Hard';
+export const DIFFICULTIES: Difficulty[] = ['Easy', 'Medium', 'Hard'];
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  roles: string[];
+}
+
+export interface AuthResponse {
+  token: string;
+  expiresAt: string;
+  user: User;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface RecipeListItem {
+  id: number;
+  name: string;
+  description: string;
+  categoryName: string;
+  difficulty: Difficulty;
+  prepMinutes: number;
+  cookMinutes: number;
+  imagePath: string | null;
+  averageRating: number;
+  reviewCount: number;
+  authorName: string;
+  isHidden: boolean;
+}
+
+export interface RecipeDetails extends RecipeListItem {
+  ingredients: string;
+  portions: number;
+  categoryId: number;
+  authorId: string;
+  createdOn: string;
+}
+
+export interface SaveRecipe {
+  name: string;
+  description: string;
+  ingredients: string;
+  prepMinutes: number;
+  cookMinutes: number;
+  portions: number;
+  difficulty: Difficulty;
+  categoryId: number;
+}
+
+export interface RecipeQuery {
+  search?: string;
+  categoryId?: number | null;
+  difficulty?: Difficulty | null;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description: string;
+  recipeCount: number;
+}
+
+export interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  userId: string;
+  userName: string;
+  createdOn: string;
+  isHidden: boolean;
+}
+
+export interface AppNotification {
+  id: number;
+  text: string;
+  link: string;
+  isRead: boolean;
+  createdOn: string;
+}
+
+export interface SuggestionRequest {
+  ingredients: string[];
+  categoryId?: number | null;
+  difficulty?: Difficulty | null;
+}
+
+export interface SuggestedRecipe {
+  id: number;
+  name: string;
+  categoryName: string;
+  difficulty: Difficulty;
+  imagePath: string | null;
+  score: number;
+  reason: string;
+  matched: string[];
+  missing: string[];
+  extra: string[];
+}
+
+export interface RecipeIdea {
+  name: string;
+  description: string;
+  ingredients: string[];
+  steps: string;
+}
+
+export interface SuggestionResponse {
+  normalizedIngredients: string[];
+  recipes: SuggestedRecipe[];
+  ideas: RecipeIdea[];
+  aiAvailable: boolean;
+  provider: string;
+  messages: string[];
+}
+
+// Shape of the API's ProblemDetails errors.
+export interface ApiProblem {
+  title?: string;
+  status?: number;
+  errors?: Record<string, string[]>;
+}
