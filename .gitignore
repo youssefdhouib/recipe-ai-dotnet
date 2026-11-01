@@ -489,3 +489,6 @@ $RECYCLE.BIN/
 api/RecipeAi.Api/wwwroot/uploads/
 .tools/
 .claude/
+
+# Local demo credentials (never committed)
+*.local.md

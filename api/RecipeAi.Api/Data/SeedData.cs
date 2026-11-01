@@ -38,7 +38,9 @@ public static class SeedData
         if (admin is not null)
         {
             await SeedRecipesAsync(db, admin.Id);
-            await SeedDemoReviewsAsync(db, provider.GetRequiredService<UserManager<AppUser>>(), admin.Id);
+            var userManager = provider.GetRequiredService<UserManager<AppUser>>();
+            await SeedDemoReviewsAsync(db, userManager, admin.Id);
+            await EnableDemoLoginsAsync(userManager, provider.GetRequiredService<IConfiguration>()["Seed:DemoUserPassword"]);
         }
     }
 
@@ -179,7 +181,7 @@ public static class SeedData
     }
 
     // A few reviewers and a short discussion so the review section is not empty in a demo.
-    // The demo users have no password, so nobody can sign in with them.
+    // They are created without a password: EnableDemoLoginsAsync gives two of them one when it is configured.
     private static async Task SeedDemoReviewsAsync(AppDbContext db, UserManager<AppUser> userManager, string adminId)
     {
         if (await userManager.FindByEmailAsync("sami@demo.recipe-ai.local") is not null)
@@ -230,5 +232,24 @@ public static class SeedData
 
         db.ReviewReplies.Add(new ReviewReply { ReviewId = best.Id, ParentId = thanks.Id, UserId = users[1].Id, Content = "Trying it with caraway this weekend." });
         await db.SaveChangesAsync();
+    }
+
+    // Two visitor accounts you can sign in with during a demo (normal "User" role, not admin).
+    // The password comes from configuration (Seed:DemoUserPassword), never from the code; without it, nothing happens.
+    private static async Task EnableDemoLoginsAsync(UserManager<AppUser> userManager, string? password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        foreach (var email in new[] { "sami@demo.recipe-ai.local", "lina@demo.recipe-ai.local" })
+        {
+            var user = await userManager.FindByEmailAsync(email);
+            if (user is not null && !await userManager.HasPasswordAsync(user))
+            {
+                await userManager.AddPasswordAsync(user, password);
+            }
+        }
     }
 }
