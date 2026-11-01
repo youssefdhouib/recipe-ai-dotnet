@@ -163,3 +163,51 @@ dotnet run
 - *What does a unique index on (UserId, RecipeId) give you?* — The database itself guarantees one favorite / one review per user and recipe, even with concurrent requests; the service still checks first to return a clean error.
 - *Why DTOs if you have Models?* — Models are the database shape; DTOs are the API contract. Separating them avoids leaking fields (password hash, internal flags) and lets the DB change without breaking clients.
 - *What lifetime does DbContext have and why?* — Scoped: one per request. It is not thread-safe and tracks entities for one unit of work.
+
+## Step 2 — Accounts, JWT authentication, validation and error handling
+**What we built**
+
+| File | Role |
+|---|---|
+| `Controllers/AuthController.cs` | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (protected) |
+| `Services/AuthService.cs` | Register (unique email, password rules, role `User`), login (password check), current user |
+| `Services/TokenService.cs` | Builds the signed JWT with the user id, email, name and roles as **claims** |
+| `Controllers/ClaimsPrincipalExtensions.cs` | `User.GetUserId()` / `User.IsAdmin()` helpers for controllers |
+| `Dtos/AuthDtos.cs` | `RegisterDto`, `LoginDto`, `UserDto`, `AuthResponseDto` (C# `record`s) |
+| `Dtos/AuthValidators.cs` | FluentValidation rules (valid email, password ≥ 8, name required) |
+| `Errors/AppExceptions.cs` | `NotFound/BadRequest/Forbidden/Conflict/Unauthorized` exceptions carrying a status code |
+| `Errors/GlobalExceptionHandler.cs` | Turns any exception into a standard JSON error (**ProblemDetails**) |
+| `Errors/ValidationFilter.cs` | Runs the matching validator before every action; invalid input → 400 with field errors |
+| `Data/SeedData.cs` | Now also creates the roles `User` / `Admin`, the admin account (password from user-secrets) and 8 demo recipes |
+| `Program.cs` | Registers Identity, JWT bearer auth, our services, validators, the exception handler and Swagger's "Authorize" button |
+
+**How login works (explain it like this)**
+1. `POST /api/auth/login` → `AuthService` finds the user and checks the password hash with Identity's `UserManager.CheckPasswordAsync`.
+2. `TokenService` creates a **JWT**: a signed JSON with claims (`nameidentifier` = user id, `email`, `name`, `role`) and an expiry (120 min). It's signed with HMAC-SHA256 and the secret `Jwt:Key`.
+3. The Angular app sends it on every request: `Authorization: Bearer <token>`.
+4. `UseAuthentication()` validates the signature, issuer, audience and expiry, then fills `User` (a `ClaimsPrincipal`). `[Authorize]` refuses anonymous calls with 401, and `[Authorize(Roles = "Admin")]` refuses non-admins with 403.
+
+**Key concepts**
+- **Identity** gives us password hashing (PBKDF2), unique emails, roles and the `AspNetUsers` / `AspNetRoles` tables. We use `AddIdentityCore` (no cookies or UI), because the API only issues JWTs.
+- **Stateless auth:** the server stores no session. Everything it needs is in the signed token. This scales easily, but a token can't be revoked before it expires (the answer: short expiry + refresh tokens).
+- **Middleware order:** `UseExceptionHandler` → `UseAuthentication` (who are you?) → `UseAuthorization` (are you allowed?) → controllers. Putting authorization before authentication would break every `[Authorize]`.
+- **DI lifetimes:** `TokenService` and `AuthService` are **Scoped** (one per request), the same as the `DbContext` and `UserManager` they depend on. A Singleton must never depend on a Scoped service.
+- **Errors in one place:** services `throw new ConflictException(...)`, and `GlobalExceptionHandler` maps that to HTTP 409 + JSON. Controllers stay one line each. Unknown exceptions become 500 and are logged, with no stack trace leaked to the client.
+- **Secrets:** `Jwt:Key` (random, at least 32 chars) and `Seed:AdminPassword` live in user-secrets. The app refuses to start if the key is missing or too short.
+
+**Tested (curl)**
+- Register → 200 with token + roles `["User"]`.
+- Login → token.
+- `/me` with the token → the user.
+- `/me` without a token → **401**.
+- Wrong password → **401** "Invalid email or password."
+- Invalid body → **400** with per-field errors.
+- Duplicate email → **409**.
+- The database contains the admin, 6 categories and 8 recipes.
+
+**Likely interview questions**
+- *What's inside a JWT and is it encrypted?* — Header.Payload.Signature, Base64Url-encoded. It's **signed, not encrypted**: anyone can read the claims, but nobody can change them without the key. So never put secrets in it.
+- *Why the same error for unknown email and wrong password?* — To avoid **user enumeration**: an attacker shouldn't learn which emails have accounts.
+- *Difference between 401 and 403?* — 401: not authenticated (no valid token). 403: authenticated but not allowed (e.g. not an admin).
+- *Where do you validate input, and why FluentValidation?* — In validators, before the action runs, through a global filter. The rules are readable, testable and kept out of controllers and services.
+- *How would you add refresh tokens?* — Store a random refresh token (hashed) per user with an expiry, add `POST /auth/refresh` that rotates it and issues a new short-lived JWT.
