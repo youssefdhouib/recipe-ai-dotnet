@@ -55,7 +55,7 @@ api/RecipeAi.Api/
 └─ Program.cs     dependency injection, auth, CORS, rate limiting, middleware pipeline
 api/RecipeAi.Api.Tests/   27 xUnit tests (AI validator, pipeline with fake providers)
 web/                      Angular 19 front end (standalone components, signals, lazy routes)
-docs/REPORT.md            step-by-step build report with design decisions
+docs/ARCHITECTURE.md      architecture, stack and AI design
 ```
 
 ## Run it
