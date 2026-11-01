@@ -1,5 +1,5 @@
 # Multi-stage build: the SDK image compiles, the small ASP.NET runtime image runs.
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore first (only the .csproj) so Docker caches the NuGet layer between builds.
