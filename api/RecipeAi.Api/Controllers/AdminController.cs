@@ -11,10 +11,26 @@ namespace RecipeAi.Api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly RecipeService _recipes;
+    private readonly ReviewService _reviews;
 
-    public AdminController(RecipeService recipes)
+    public AdminController(RecipeService recipes, ReviewService reviews)
     {
         _recipes = recipes;
+        _reviews = reviews;
+    }
+
+    [HttpPost("reviews/{id:int}/hide")]
+    public async Task<IActionResult> HideReview(int id)
+    {
+        await _reviews.SetHiddenAsync(id, true);
+        return NoContent();
+    }
+
+    [HttpPost("reviews/{id:int}/unhide")]
+    public async Task<IActionResult> UnhideReview(int id)
+    {
+        await _reviews.SetHiddenAsync(id, false);
+        return NoContent();
     }
 
     [HttpPost("recipes/{id:int}/hide")]

@@ -62,6 +62,9 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RecipeService>();
 builder.Services.AddScoped<CategoryService>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<FavoriteService>();
 
 // Singleton: LocalFileStorage has no state, one instance is enough for the whole app.
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();

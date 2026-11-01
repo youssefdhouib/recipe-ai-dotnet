@@ -325,3 +325,47 @@ dotnet run
 - *Why send only 25 candidates?* — Prompt size drives cost and latency, and long contexts reduce answer quality. Pre-filtering in SQL first (category, difficulty, rating) is cheap.
 - *How do you protect your API key and your bill?* — The key lives in user-secrets locally and in Key Vault or environment variables in production; it's never committed. The endpoint is rate-limited per IP, and every call is logged with its duration.
 - *How is this related to agents like Engy?* — Same principles: the LLM proposes, deterministic code validates against real business data, the system logs every AI action, and it degrades safely. The next step would be **human approval** before any write action.
+
+## Step 5 — Reviews, favorites and notifications
+**What we built**
+
+| File | Role |
+|---|---|
+| `Controllers/ReviewsController.cs` | `GET /api/recipes/{id}/reviews` (public), `POST` (logged in) → **nested route** |
+| `Controllers/FavoritesController.cs` | `GET /api/favorites`, `POST /{recipeId}`, `DELETE /{recipeId}` (whole controller `[Authorize]`) |
+| `Controllers/NotificationsController.cs` | List (latest 50), unread count, mark one / all as read, delete |
+| `Controllers/AdminController.cs` | + `POST /api/admin/reviews/{id}/hide` and `/unhide` |
+| `Services/ReviewService.cs` | Rules: rating 1–5, one review per user, no reviewing your own recipe, notify the author |
+| `Services/FavoriteService.cs` | Idempotent add, remove, list as recipe cards, notify the author |
+| `Services/NotificationService.cs` | `Add` (no save), queries scoped to the current user, bulk "mark all read" |
+| `Dtos/SocialDtos.cs` | `ReviewDto`, `SaveReviewDto` (+ validator), `NotificationDto`, `UnreadCountDto` |
+
+**Key code explained**
+- **One transaction for "review + notification":** `NotificationService.Add()` only adds the notification to the `DbContext`. `ReviewService` then calls `SaveChangesAsync()` **once**, and EF writes both rows in a single database transaction: either both are saved or neither is. Services share the same scoped `DbContext` within a request, which is why this works.
+- **Business rules in the service, double-checked by the database:**
+  - The service checks "already reviewed?" and returns a clean 409.
+  - If two requests arrive at the same moment, both can pass that check. The **unique index (UserId, RecipeId)** from step 1 makes the second insert fail, and we catch `DbUpdateException` and still return 409. That's how you handle **race conditions** properly.
+- **Idempotent favorites:** adding a recipe that's already a favorite returns 204, not an error. A double click in the UI is harmless. `DELETE` on a non-existing favorite is also 204.
+- **Data isolation:** every notification query filters on `UserId == current user`. Accessing someone else's notification id returns **404**, not 403, so ids can't be probed.
+- **`ExecuteUpdateAsync`** (EF Core 7+) for "mark all as read": a single SQL `UPDATE ... WHERE` without loading rows into memory. *Trade-off:* it bypasses the change tracker, so the `SaveChangesAsync` override doesn't set `ModifiedOn` for those rows.
+- **Moderation:** hidden reviews disappear from public lists **and from the average rating** (the `AVG` in SQL filters `!IsHidden`). Admins still see them.
+
+**Tested (21 end-to-end checks, all PASS)**
+- Reviews:
+  - Without login → 401. Rating 9 → 400.
+  - User reviews → 201. A second review → 409. The author reviewing their own recipe → 400.
+  - Average 4.0 with two reviews.
+- Favorites:
+  - Add → 204, and adding again is still 204 (idempotent).
+  - The list shows the recipe. Remove → 204, and the list is empty.
+- Notifications:
+  - The recipe author receives **3 notifications** (2 reviews + 1 favorite), e.g. "Test User saved your recipe "Shakshuka" to favorites." → `/recipes/5`.
+  - Another user reading it → 404. Mark one read, mark all read → unread 0. Delete → 204.
+- Moderation: a user hiding a review → 403; an admin → 204. The hidden review is gone from the public list and the average becomes 3.0.
+
+**Likely interview questions**
+- *How do you guarantee one review per user per recipe?* — Two layers: a check in the service for a friendly error, and a unique index in the database for correctness under concurrency. I catch `DbUpdateException` to map the index violation to 409.
+- *What is a transaction here and where is it?* — `SaveChangesAsync` wraps all pending changes of the `DbContext` in one transaction. Adding the review and the notification before one save makes them atomic.
+- *What does idempotent mean and why does it matter for APIs?* — Calling it N times has the same effect as calling it once. It makes retries and double clicks safe. PUT and DELETE should be idempotent; my "add favorite" POST is too, by design.
+- *Why `ExecuteUpdateAsync` instead of loading and saving?* — For bulk updates it's one SQL statement instead of N tracked entities: faster and less memory. Its limit is that it skips change tracking and `SaveChanges` logic.
+- *How would you push notifications in real time?* — SignalR (WebSockets) to push "new notification" events to the Angular app, instead of polling `unread-count`.
