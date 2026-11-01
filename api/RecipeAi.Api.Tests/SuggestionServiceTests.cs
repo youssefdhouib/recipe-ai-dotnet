@@ -16,15 +16,32 @@ public class SuggestionServiceTests
         await using var db = CreateDb(out var pastaId, out _);
         var ai = new ScriptedProvider(
             normalize: """{"ingredients":["tomato","garlic"]}""",
-            rank: $$"""{"recipes":[{"id":{{pastaId}},"score":90,"reason":"Great match","matched":["tomato"]},{"id":424242,"score":99}]}""");
+            rank: $$"""{"recipes":[{"id":{{pastaId}},"score":90,"reason":"Great match","matched":["tomato","garlic","spaghetti"],"missing":["olive oil"]},{"id":424242,"score":99}]}""");
 
         var result = await CreateService(db, ai).SuggestAsync(new SuggestionRequestDto(new() { "Tomatoes", "garlic" }, null, null));
 
         Assert.True(result.AiAvailable);
         Assert.Single(result.Recipes); // the hallucinated id 424242 is gone
         Assert.Equal("Tomato Pasta", result.Recipes[0].Name); // name from OUR database
-        Assert.Equal(90, result.Recipes[0].Score);
+        Assert.Equal(75, result.Recipes[0].Score); // 3 matched / 4 listed, computed by us (not the model's 90)
         Assert.Empty(result.Ideas); // a good match exists, no need for AI ideas
+    }
+
+    [Fact]
+    public async Task Recipes_the_ai_forgot_are_still_scored_by_keywords()
+    {
+        await using var db = CreateDb(out var pastaId, out _);
+        // The model only returns the soup and "forgets" the pasta, which is the best match.
+        var soupId = db.Recipes.Single(r => r.Name == "Lentil Soup").Id;
+        var ai = new ScriptedProvider(
+            normalize: """{"ingredients":["spaghetti","tomato","garlic"]}""",
+            rank: $$"""{"recipes":[{"id":{{soupId}},"score":5}]}""");
+
+        var result = await CreateService(db, ai).SuggestAsync(new SuggestionRequestDto(new() { "spaghetti", "tomato", "garlic" }, null, null));
+
+        Assert.True(result.AiAvailable);
+        Assert.Equal(pastaId, result.Recipes[0].Id);
+        Assert.Equal("Scored by keyword matching.", result.Recipes[0].Reason);
     }
 
     [Fact]

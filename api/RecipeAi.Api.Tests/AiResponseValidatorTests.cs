@@ -44,6 +44,17 @@ public class AiResponseValidatorTests
     }
 
     [Fact]
+    public void Ranking_computes_the_score_from_matched_and_missing_lists()
+    {
+        // The model claims 100 but lists 1 matched and 3 missing ingredients: our score is 25.
+        const string json = """{"recipes":[{"id":1,"score":100,"matched":["garlic"],"missing":["chicken","butter","parsley"]}]}""";
+
+        var result = AiResponseValidator.ParseRanking(json, AllowedIds)!;
+
+        Assert.Equal(25, result[0].Score);
+    }
+
+    [Fact]
     public void Ranking_ignores_duplicate_ids()
     {
         const string json = """{"recipes":[{"id":3,"score":70},{"id":3,"score":10}]}""";

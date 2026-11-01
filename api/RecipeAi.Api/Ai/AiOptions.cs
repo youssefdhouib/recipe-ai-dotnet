@@ -19,6 +19,9 @@ public class GroqOptions
 
     public string Model { get; set; } = "openai/gpt-oss-120b";
 
+    // For reasoning models (gpt-oss): "low", "medium" or "high".
+    public string ReasoningEffort { get; set; } = "medium";
+
     // Never in appsettings.json: set with  dotnet user-secrets set "Ai:Groq:ApiKey" "<key>"
     public string? ApiKey { get; set; }
 }

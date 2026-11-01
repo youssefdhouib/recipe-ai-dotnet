@@ -41,14 +41,28 @@ public static class AiResponseValidator
                 continue;
             }
 
-            // 2. The score is clamped to 0-100, whatever the model says.
-            TryGetInt(item["score"], out var score);
+            var matched = CleanList(item["matched"], MaxListItems);
+            var missing = CleanList(item["missing"], MaxListItems);
+
+            // 2. The model classifies, our code calculates: when it lists matched/missing ingredients,
+            //    the score is computed from those lists, so the number always agrees with what the UI shows.
+            //    Otherwise we fall back to its score, clamped to 0-100.
+            int score;
+            if (matched.Count + missing.Count > 0)
+            {
+                score = (int)Math.Round(100.0 * matched.Count / (matched.Count + missing.Count));
+            }
+            else
+            {
+                TryGetInt(item["score"], out score);
+                score = Math.Clamp(score, 0, 100);
+            }
 
             results.Add(new RankedMatch(
                 id,
-                Math.Clamp(score, 0, 100),
-                CleanList(item["matched"], MaxListItems),
-                CleanList(item["missing"], MaxListItems),
+                score,
+                matched,
+                missing,
                 CleanList(item["extra"], MaxListItems),
                 Truncate(GetString(item["reason"]), MaxReasonLength)));
         }

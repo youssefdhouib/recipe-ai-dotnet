@@ -82,6 +82,18 @@ public class SuggestionService
                 await TryAiAsync("rank", ct => _ai.RankRecipesAsync(normalized, aiCandidates, ct), cancellationToken),
                 candidates.Select(c => c.Id).ToList());
             aiAvailable = ranking is not null;
+
+            // Completeness: an LLM sometimes skips items. Every candidate it forgot is scored by keywords,
+            // so a good recipe can never silently disappear from the results.
+            if (ranking is not null)
+            {
+                var rankedIds = ranking.Select(r => r.RecipeId).ToHashSet();
+                var forgotten = candidates.Where(c => !rankedIds.Contains(c.Id)).Select(c => (c.Id, c.Ingredients));
+                ranking = ranking
+                    .Concat(KeywordRank(normalized, forgotten).Select(m => m with { Reason = "Scored by keyword matching." }))
+                    .OrderByDescending(m => m.Score)
+                    .ToList();
+            }
         }
 
         // Step 6 (fallback) - AI down or unusable: keyword scoring so the user always gets an answer.

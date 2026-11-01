@@ -22,7 +22,8 @@ module.exports = {
         lift: '0 1px 2px rgba(20,27,52,.06), 0 8px 24px -12px rgba(20,27,52,.18)',
       },
       keyframes: {
-        rise: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'none' } },
+        // Starts partly visible on purpose: if animations are paused (background tab), content still shows.
+        rise: { '0%': { opacity: '0.4', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'none' } },
       },
       animation: {
         rise: 'rise .45s cubic-bezier(.2,.7,.2,1) both',

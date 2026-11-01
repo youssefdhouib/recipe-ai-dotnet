@@ -38,7 +38,10 @@ public class GroqAiProvider : IAiProvider
         {
             model = _options.Model,
             temperature = 0.2, // low = more consistent answers
-            max_tokens = 2048,
+            // gpt-oss models "think" before answering; hidden reasoning tokens count against max_tokens,
+            // so the budget is generous. Effort is configurable: low = faster, medium = more careful.
+            reasoning_effort = _options.ReasoningEffort,
+            max_tokens = 4096,
             response_format = new { type = "json_object" }, // JSON mode: the API forces valid JSON
             messages = new[]
             {
