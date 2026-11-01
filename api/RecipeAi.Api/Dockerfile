@@ -9,7 +9,7 @@ RUN dotnet restore RecipeAi.Api/RecipeAi.Api.csproj
 COPY RecipeAi.Api/ RecipeAi.Api/
 RUN dotnet publish RecipeAi.Api/RecipeAi.Api.csproj -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 
