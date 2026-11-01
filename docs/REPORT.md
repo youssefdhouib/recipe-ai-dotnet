@@ -25,6 +25,7 @@ recipe-ai-dotnet/
 │  │  ├─ Dtos/          what goes in / out of the API (never expose Models directly)
 │  │  ├─ Data/          AppDbContext (EF Core), Migrations/, SeedData
 │  │  ├─ Storage/       IFileStorage + LocalFileStorage (image upload)
+│  │  ├─ Errors/        GlobalExceptionHandler (ProblemDetails), ValidationFilter, AppExceptions
 │  │  └─ Program.cs     startup: dependency injection, auth, Swagger, middleware
 │  └─ RecipeAi.Api.Tests/   xUnit tests
 ├─ web/                 Angular front end
