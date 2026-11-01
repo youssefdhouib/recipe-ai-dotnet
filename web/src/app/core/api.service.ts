@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import {
+  AdminListQuery, AdminRecipe, AdminReview, AdminReviewDetails, AdminUser, AiMonitor,
   ApiProblem, AppNotification, AdminStats, CalorieRequest, CalorieResult, PublicStats, Category, PagedResult, RecipeDetails, RecipeListItem, RecipeQuery, RecipeReviews, Reply, ReviewSort, SaveReview,
   SaveRecipe, SuggestionRequest, SuggestionResponse,
 } from './models';
@@ -14,11 +15,7 @@ export class ApiService {
 
   // ----- Recipes -----
   getRecipes(query: RecipeQuery) {
-    let params = new HttpParams();
-    Object.entries(query).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && value !== '') params = params.set(key, String(value));
-    });
-    return this.http.get<PagedResult<RecipeListItem>>(`${this.url}/recipes`, { params });
+    return this.http.get<PagedResult<RecipeListItem>>(`${this.url}/recipes`, { params: this.toParams(query) });
   }
 
   getRecipe(id: number) {
@@ -143,6 +140,31 @@ export class ApiService {
     return this.http.get<AdminStats>(`${this.url}/admin/stats`);
   }
 
+  getAiMonitor(days = 14) {
+    return this.http.get<AiMonitor>(`${this.url}/admin/ai`, { params: { days } });
+  }
+
+  getAdminRecipes(query: AdminListQuery) {
+    return this.http.get<PagedResult<AdminRecipe>>(`${this.url}/admin/recipes`, { params: this.toParams(query) });
+  }
+
+  getAdminReviews(query: AdminListQuery) {
+    return this.http.get<PagedResult<AdminReview>>(`${this.url}/admin/reviews`, { params: this.toParams(query) });
+  }
+
+  getAdminReview(id: number) {
+    return this.http.get<AdminReviewDetails>(`${this.url}/admin/reviews/${id}`);
+  }
+
+  getAdminUsers(query: AdminListQuery) {
+    return this.http.get<PagedResult<AdminUser>>(`${this.url}/admin/users`, { params: this.toParams(query) });
+  }
+
+  // action: ban | unban | make-admin | remove-admin
+  userAction(id: string, action: 'ban' | 'unban' | 'make-admin' | 'remove-admin') {
+    return this.http.post<void>(`${this.url}/admin/users/${id}/${action}`, {});
+  }
+
   setRecipeHidden(id: number, hidden: boolean) {
     return this.http.post<void>(`${this.url}/admin/recipes/${id}/${hidden ? 'hide' : 'unhide'}`, {});
   }
@@ -153,6 +175,15 @@ export class ApiService {
 
   setReplyHidden(id: number, hidden: boolean) {
     return this.http.post<void>(`${this.url}/admin/replies/${id}/${hidden ? 'hide' : 'unhide'}`, {});
+  }
+
+  // Query object -> ?key=value, skipping empty values.
+  private toParams(query: object): HttpParams {
+    let params = new HttpParams();
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') params = params.set(key, String(value));
+    });
+    return params;
   }
 }
 

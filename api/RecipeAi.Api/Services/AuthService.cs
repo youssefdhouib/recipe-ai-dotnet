@@ -49,6 +49,12 @@ public class AuthService
             throw new UnauthorizedException("Invalid email or password.");
         }
 
+        // Checked after the password, so a stranger cannot find out which accounts are banned.
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            throw new ForbiddenException("This account has been suspended.");
+        }
+
         return await BuildResponseAsync(user);
     }
 

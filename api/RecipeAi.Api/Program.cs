@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -54,6 +55,22 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1),
         };
+
+        // A ban must work at once, not when the token expires: reject tokens of locked-out accounts.
+        // Cost: one small query per authenticated request.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var users = context.HttpContext.RequestServices.GetRequiredService<UserManager<AppUser>>();
+                var user = userId is null ? null : await users.FindByIdAsync(userId);
+                if (user is null || await users.IsLockedOutAsync(user))
+                {
+                    context.Fail("This account has been suspended.");
+                }
+            },
+        };
     });
 builder.Services.AddAuthorization();
 
@@ -64,6 +81,7 @@ builder.Services.AddScoped<RecipeService>();
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<FavoriteService>();
 builder.Services.AddSingleton<CalorieService>(); // stateless math: one instance is enough
 builder.Services.AddScoped<StatsService>();

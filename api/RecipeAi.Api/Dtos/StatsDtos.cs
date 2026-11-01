@@ -14,13 +14,22 @@ public record AiStepLatencyDto(string Step, int AverageMs, int Calls);
 
 public record AiUsageDto(int Calls, int Failed, double SuccessRate, int AverageMs, IReadOnlyList<AiStepLatencyDto> Steps);
 
+// A KPI with its trend: how many were added in the last 7 days vs the 7 days before.
+public record TrendDto(string Label, int Total, int Last7Days, int Previous7Days);
+
+// What needs an admin's eye.
+public record ModerationCountsDto(int HiddenRecipes, int HiddenReviews, int HiddenReplies, int LowRatingsThisWeek, int BannedUsers);
+
+// One line of the "recent activity" feed (kind: user | recipe | review).
+public record ActivityDto(string Kind, string Text, string Link, DateTime CreatedOn);
+
 public record AdminStatsDto(
-    int Users,
-    int Recipes,
-    int HiddenRecipes,
-    int Reviews,
+    IReadOnlyList<TrendDto> Trends,
     int Favorites,
+    ModerationCountsDto Moderation,
     IReadOnlyList<CountItemDto> RecipesPerCategory,
     IReadOnlyList<DailyCountDto> ReviewsPerDay,
+    IReadOnlyList<DailyCountDto> SignupsPerDay,
     IReadOnlyList<TopRecipeDto> TopRecipes,
-    AiUsageDto AiUsage);
+    AiUsageDto AiUsage,
+    IReadOnlyList<ActivityDto> RecentActivity);

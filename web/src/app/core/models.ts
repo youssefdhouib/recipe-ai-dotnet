@@ -202,14 +202,42 @@ export interface TopRecipe { id: number; name: string; averageRating: number; re
 export interface AiStepLatency { step: string; averageMs: number; calls: number; }
 export interface AiUsage { calls: number; failed: number; successRate: number; averageMs: number; steps: AiStepLatency[]; }
 
+export interface Trend { label: string; total: number; last7Days: number; previous7Days: number; }
+export interface ModerationCounts { hiddenRecipes: number; hiddenReviews: number; hiddenReplies: number; lowRatingsThisWeek: number; bannedUsers: number; }
+export interface Activity { kind: 'user' | 'recipe' | 'review'; text: string; link: string; createdOn: string; }
+
 export interface AdminStats {
-  users: number;
-  recipes: number;
-  hiddenRecipes: number;
-  reviews: number;
+  trends: Trend[];
   favorites: number;
+  moderation: ModerationCounts;
   recipesPerCategory: CountItem[];
   reviewsPerDay: DailyCount[];
+  signupsPerDay: DailyCount[];
   topRecipes: TopRecipe[];
   aiUsage: AiUsage;
+  recentActivity: Activity[];
 }
+
+// ----- Admin tables -----
+export interface AdminListQuery { search?: string; status?: string; page?: number; pageSize?: number; }
+
+export interface AdminRecipe {
+  id: number; name: string; categoryName: string; authorName: string; imagePath: string | null;
+  isHidden: boolean; reviewCount: number; averageRating: number | null; favorites: number; createdOn: string;
+}
+
+export interface AdminReview {
+  id: number; title: string; rating: number; comment: string; recipeId: number; recipeName: string; userName: string;
+  createdOn: string; isHidden: boolean; helpfulCount: number; replyCount: number; hiddenReplyCount: number;
+}
+
+export interface AdminReviewDetails { review: AdminReview; replies: Reply[]; }
+
+export interface AdminUser {
+  id: string; fullName: string; email: string; isAdmin: boolean; isBanned: boolean; isMe: boolean;
+  createdOn: string; recipes: number; reviews: number; replies: number;
+}
+
+export interface AiDay { date: string; succeeded: number; failed: number; }
+export interface AiCall { id: number; createdOn: string; step: string; provider: string; durationMs: number; success: boolean; }
+export interface AiMonitor { days: number; usage: AiUsage; perDay: AiDay[]; recent: AiCall[]; }

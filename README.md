@@ -17,10 +17,15 @@ Built as a full-stack .NET project: **ASP.NET Core 8 Web API · Entity Framework
   - AI recipe ideas appear when nothing matches well.
 - **Recipes:** search, category and difficulty filters, paging, create/edit/delete (owner or admin), secure photo upload.
 - **Accounts:** register / login with JWT, roles `User` and `Admin`.
-- **Social:** 1–5 star reviews (one per user), favorites, notifications ("X rated your recipe 5/5").
+- **Reviews:** title + 1–5 stars (one per user, editable), rating summary with a 5→1 histogram, sort, "Helpful" votes, threaded replies with a recipe-author badge.
+- **Social:** favorites, notifications ("X rated your recipe 5/5", "Y replied to your review").
 - **Calorie calculator:** daily target (Mifflin-St Jeor BMR × activity, goal-adjusted) with a protein / carbs / fat split.
 - **Homepage:** live stats, top rated, "ready in 20 minutes", category photo tiles.
-- **Admin dashboard:** totals, recipes per category, reviews over 14 days, top recipes, and **AI usage** (calls, success rate, latency per step from the AI call log); moderation and category management.
+- **Admin space** (own layout with a sidebar, admins land there after login):
+  - Dashboard: KPIs with weekly trends, "needs attention" (low ratings, hidden content, banned users), reviews and sign-ups per day, recent activity.
+  - Recipes, Reviews and Users tables with search, filters and paging; hide/unhide/delete content and each reply.
+  - Users: ban/unban (Identity lockout, the user's current token stops working at once), make/remove admin, never on yourself.
+  - Categories, and an **AI monitor** (calls per day, success rate, latency per step, latest calls from the AI call log).
 
 ## How the AI is made reliable
 The LLM is treated as **untrusted input**:
@@ -86,14 +91,14 @@ cd web && npm install && npx ng serve   # http://localhost:4200
 Migrations and seed data (6 categories, 8 recipes, an admin `admin@recipeai.local`) are applied automatically at startup.
 
 ```bash
-dotnet test                       # 39 tests
+dotnet test                       # 44 tests
 ```
 
 ## CI/CD
 GitHub Actions ([.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml)) runs on every push and pull request:
 
 ```
-push / PR ─► api:    restore → build → 39 tests (+ coverage) → "migrations up to date?" check
+push / PR ─► api:    restore → build → 44 tests (+ coverage) → "migrations up to date?" check
           └► web:    npm ci → ng build (production)
                  └─► images: build recipe-ai-api + recipe-ai-web Docker images
 main only ─────────► push images to ghcr.io (tags: commit SHA + latest)

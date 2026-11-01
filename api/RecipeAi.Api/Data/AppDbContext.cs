@@ -33,6 +33,9 @@ public class AppDbContext : IdentityDbContext<AppUser>
     {
         base.OnModelCreating(builder);
 
+        // Existing rows get the date of the migration; new users get DateTime.UtcNow from the class.
+        builder.Entity<AppUser>(e => e.Property(u => u.CreatedOn).HasDefaultValueSql("GETUTCDATE()"));
+
         builder.Entity<Category>(e =>
         {
             e.Property(c => c.Name).HasMaxLength(60);
