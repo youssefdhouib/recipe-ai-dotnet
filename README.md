@@ -4,6 +4,8 @@
 
 Built as a full-stack .NET project: **ASP.NET Core 8 Web API · Entity Framework Core 8 · SQL Server 2022 · Identity + JWT · Angular 19 · Groq LLM (swappable provider) · xUnit · Docker**.
 
+[![Recipe AI demo video: see it work in 2 minutes](docs/demo/poster.jpg)](#demo-video)
+
 ![AI ingredient matching: what you have in olive, what's missing in harissa](docs/screenshots/ai-match.jpg)
 
 | Home: the pantry input is the hero | Recipe page |
@@ -18,6 +20,29 @@ Built as a full-stack .NET project: **ASP.NET Core 8 Web API · Entity Framework
 | ![Admin dashboard](docs/screenshots/admin-dashboard.jpg) | ![Admin users](docs/screenshots/admin-users.jpg) |
 | **Reviews:** moderate each reply inline | **AI monitor:** calls, success rate, latency |
 | ![Admin reviews](docs/screenshots/admin-reviews.jpg) | ![AI monitor](docs/screenshots/admin-ai.jpg) |
+
+## Demo video
+**[▶ Watch the 1:54 demo (MP4, 1080p)](docs/demo/recipe-ai-demo.mp4)**: narrated walkthrough of the real app, from typing ingredients in French to banning a user in the admin space.
+
+![Typing "tomates, ail, spaghetti" in French, then the AI ranking](docs/demo/preview.gif)
+
+| Time | Chapter |
+|---|---|
+| 0:00 | Recipe AI in one sentence: the stack |
+| 0:12 | AI ingredient matching, typed in French: what you have (green) vs what to buy (red) |
+| 0:28 | Why the AI can be trusted: server-side validation, scores computed in code, keyword fallback |
+| 0:44 | Reviews: rating breakdown, helpful votes, threaded replies with a recipe-author badge |
+| 0:56 | Calorie calculator (Mifflin-St Jeor) |
+| 1:04 | Admin space: dashboard, an instant ban, inline reply moderation, AI monitor |
+| 1:29 | Under the hood: layered Web API, EF Core migrations, 45 tests, CI/CD, Docker |
+
+<details>
+<summary>How the video was made</summary>
+
+- **Recorded automatically** from the running Docker app by a Puppeteer script: cursor, typing, scrolling and captions are scripted. Frames come from Chrome's DevTools screencast with their own timestamps, so the narration lines up within 0.1 s, and a re-take after a UI change takes about 3 minutes.
+- **Narration:** Kokoro-82M (open-source text-to-speech, Apache-2.0) run locally, one sentence at a time, with a pronunciation table (ASP.NET, SQL, names). Every line was checked by transcribing it back with Whisper.
+- **Music:** an original score written for this video (MIDI rendered with FluidSynth), ducked under the voice and mastered to web loudness.
+</details>
 
 ## Features
 - **AI ingredient matching:**
