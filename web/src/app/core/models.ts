@@ -103,7 +103,7 @@ export interface Review {
   userId: string;
   userName: string;
   createdOn: string;
-  modifiedOn: string | null;
+  editedOn: string | null;
   isHidden: boolean;
   helpfulCount: number;
   votedByMe: boolean;

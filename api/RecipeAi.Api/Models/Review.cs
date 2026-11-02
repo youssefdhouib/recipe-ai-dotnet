@@ -11,6 +11,10 @@ public class Review : BaseEntity
 
     public bool IsHidden { get; set; }
 
+    // Set only when the author edits the review. Not ModifiedOn: that audit date also changes
+    // when an admin hides the review, which must not show "edited".
+    public DateTime? EditedOn { get; set; }
+
     public int RecipeId { get; set; }
 
     public Recipe Recipe { get; set; } = null!;

@@ -88,7 +88,7 @@ interface Thread { reply: Reply; answers: Reply[]; }
                   @if (rev.userId === me()) { <span class="ml-1 rounded-full bg-cobalt-50 px-2 py-0.5 text-[10px] font-semibold text-cobalt-700">You</span> }
                 </p>
                 <p class="font-mono text-[11px] text-ink-faint">
-                  {{ rev.createdOn | date: 'd MMM y' }}@if (rev.modifiedOn) { · edited }@if (rev.isHidden) { · hidden }
+                  {{ rev.createdOn | date: 'd MMM y' }}@if (rev.editedOn) { · edited }@if (rev.isHidden) { · hidden }
                 </p>
               </div>
             </div>

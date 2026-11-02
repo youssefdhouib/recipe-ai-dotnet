@@ -52,7 +52,7 @@ public class ReviewService
                 r.UserId,
                 r.User.FullName,
                 r.CreatedOn,
-                r.ModifiedOn,
+                r.EditedOn,
                 r.IsHidden,
                 r.Votes.Count,
                 viewerId != null && r.Votes.Any(v => v.UserId == viewerId),
@@ -120,7 +120,8 @@ public class ReviewService
         review.Title = dto.Title.Trim();
         review.Rating = dto.Rating;
         review.Comment = dto.Comment.Trim();
-        await _db.SaveChangesAsync(); // ModifiedOn is set by AppDbContext -> the UI shows "edited"
+        review.EditedOn = DateTime.UtcNow; // the UI shows "edited"
+        await _db.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int reviewId, string userId, bool isAdmin)

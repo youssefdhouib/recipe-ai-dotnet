@@ -50,10 +50,24 @@ public class ReviewServiceTests
         await service.UpdateAsync(id, new SaveReviewDto("Even nicer", 5, ""), "bob");
         var review = Assert.Single((await service.GetForRecipeAsync(recipeId, null, false, ReviewSort.Newest)).Reviews);
         Assert.Equal("Even nicer", review.Title);
-        Assert.NotNull(review.ModifiedOn);
+        Assert.NotNull(review.EditedOn);
 
         await service.DeleteAsync(id, "admin", isAdmin: true);
         Assert.Empty((await service.GetForRecipeAsync(recipeId, null, false, ReviewSort.Newest)).Reviews);
+    }
+
+    [Fact]
+    public async Task Hiding_a_review_does_not_mark_it_as_edited()
+    {
+        await using var db = CreateDb(out var recipeId);
+        var service = CreateService(db);
+        var id = await service.CreateAsync(recipeId, new SaveReviewDto("Nice", 4, ""), "bob");
+
+        await service.SetHiddenAsync(id, true);
+        await service.SetHiddenAsync(id, false);
+
+        var review = Assert.Single((await service.GetForRecipeAsync(recipeId, null, false, ReviewSort.Newest)).Reviews);
+        Assert.Null(review.EditedOn);
     }
 
     [Fact]

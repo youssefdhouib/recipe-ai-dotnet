@@ -28,7 +28,7 @@ public record ReviewDto(
     string UserId,
     string UserName,
     DateTime CreatedOn,
-    DateTime? ModifiedOn,
+    DateTime? EditedOn,
     bool IsHidden,
     int HelpfulCount,
     bool VotedByMe,

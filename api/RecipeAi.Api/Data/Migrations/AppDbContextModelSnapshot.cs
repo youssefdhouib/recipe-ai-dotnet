@@ -447,6 +447,9 @@ namespace RecipeAi.Api.Data.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("EditedOn")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("IsHidden")
                         .HasColumnType("bit");
 
