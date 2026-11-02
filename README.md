@@ -4,11 +4,20 @@
 
 Built as a full-stack .NET project: **ASP.NET Core 8 Web API · Entity Framework Core 8 · SQL Server 2022 · Identity + JWT · Angular 19 · Groq LLM (swappable provider) · xUnit · Docker**.
 
-![AI ingredient matching](docs/screenshots/ai-match.jpg)
+![AI ingredient matching: what you have in olive, what's missing in harissa](docs/screenshots/ai-match.jpg)
 
 | Home: the pantry input is the hero | Recipe page |
 |---|---|
 | ![Home](docs/screenshots/home.jpg) | ![Recipe](docs/screenshots/recipe.jpg) |
+| **Reviews:** rating summary, helpful votes, threaded replies | **Calorie calculator** |
+| ![Reviews](docs/screenshots/reviews.jpg) | ![Calorie calculator](docs/screenshots/calories.jpg) |
+
+### Admin space
+| Dashboard: weekly trends, what needs attention | Users: ban (immediate) and roles |
+|---|---|
+| ![Admin dashboard](docs/screenshots/admin-dashboard.jpg) | ![Admin users](docs/screenshots/admin-users.jpg) |
+| **Reviews:** moderate each reply inline | **AI monitor:** calls, success rate, latency |
+| ![Admin reviews](docs/screenshots/admin-reviews.jpg) | ![AI monitor](docs/screenshots/admin-ai.jpg) |
 
 ## Features
 - **AI ingredient matching:**
@@ -91,14 +100,14 @@ cd web && npm install && npx ng serve   # http://localhost:4200
 Migrations and seed data (6 categories, 8 recipes, an admin `admin@recipeai.local`) are applied automatically at startup.
 
 ```bash
-dotnet test                       # 44 tests
+dotnet test                       # 45 tests
 ```
 
 ## CI/CD
 GitHub Actions ([.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml)) runs on every push and pull request:
 
 ```
-push / PR ─► api:    restore → build → 44 tests (+ coverage) → "migrations up to date?" check
+push / PR ─► api:    restore → build → 45 tests (+ coverage) → "migrations up to date?" check
           └► web:    npm ci → ng build (production)
                  └─► images: build recipe-ai-api + recipe-ai-web Docker images
 main only ─────────► push images to ghcr.io (tags: commit SHA + latest)
