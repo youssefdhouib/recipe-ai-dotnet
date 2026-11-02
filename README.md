@@ -22,15 +22,11 @@ Built as a full-stack .NET project: **ASP.NET Core 8 Web API · Entity Framework
 | ![Admin reviews](docs/screenshots/admin-reviews.jpg) | ![AI monitor](docs/screenshots/admin-ai.jpg) |
 
 ## Demo video
-
+A 1:54 narrated walkthrough of the real app, from typing ingredients in French to banning a user in the admin space.
 
 https://github.com/user-attachments/assets/2eb237b3-9e65-438d-9f34-a7818bdbfcfa
 
-
-
-**[▶ Watch the 1:54 demo (MP4, 1080p)](docs/demo/recipe-ai-demo.mp4)**: narrated walkthrough of the real app, from typing ingredients in French to banning a user in the admin space.
-
-![Typing "tomates, ail, spaghetti" in French, then the AI ranking](docs/demo/preview.gif)
+<sub>Not playing? [Download the MP4 (1080p, 8 MB)](docs/demo/recipe-ai-demo.mp4).</sub>
 
 | Time | Chapter |
 |---|---|
